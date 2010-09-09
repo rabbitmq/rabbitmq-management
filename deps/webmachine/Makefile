@@ -1,10 +1,11 @@
 HG_UPSTREAM=http://bitbucket.org/justin/webmachine
+# You need to update the website when you change the revision.
 REVISION=0c4b60ac68b4
 
 EBIN_DIR=ebin
 INCLUDE_DIR=include
 
-LIB_PACKAGE=webmachine
+LIB_PACKAGE=webmachine-$(REVISION)
 LIB_PACKAGE_DIR=$(LIB_PACKAGE)
 LIB_PACKAGE_NAME=$(LIB_PACKAGE).ez
 
