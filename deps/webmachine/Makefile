@@ -37,6 +37,8 @@ $(CHECKOUT_DIR):
 	rm -rf ebin include
 	cp -r $(LIB_PACKAGE_DIR)/ebin $(EBIN_DIR)
 	cp -r $(LIB_PACKAGE_DIR)/include $(INCLUDE_DIR)
+	sed -e 's:\({vsn,\).*\(},\):\1"$(REVISION)"\2:g' \
+		-i $(LIB_PACKAGE_DIR)/ebin/*.app
 	zip $(LIB_PACKAGE_NAME) $(LIB_PACKAGE_DIR)/
 	zip -r $(LIB_PACKAGE_NAME) $(LIB_PACKAGE_DIR)/$(EBIN_DIR)/
 
