@@ -4,7 +4,6 @@ DEPS=rabbitmq-mochiweb rabbitmq-server rabbitmq-erlang-client
 INTERNAL_DEPS=webmachine
 RUNTIME_DEPS=webmachine
 
-TEST_ARGS=-rabbit_mochiweb port 55672
 TEST_COMMANDS=eunit:test(rabbit_mgmt_test_unit,[verbose]) rabbit_mgmt_test_db:test()
 
 EXTRA_PACKAGE_DIRS=priv
