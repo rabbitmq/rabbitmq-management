@@ -54,7 +54,7 @@ all_nodes() ->
 make_entry(Node, Type, Running) ->
     [{name, Node}, {type, Type}, {running, Running}]
         ++ case Running of
-               true -> rabbit_mgmt_external_stats:info(Node) ++
+               true -> rabbit_external_stats:info(Node) ++
                            [{applications, applications(Node)}];
                _    -> []
            end.
