@@ -6,12 +6,12 @@
   <table class="facts">
     <tr>
       <th>
-        File Descriptors
+        Socket Descriptors
         <sub>(used / available)</sub>
       </th>
       <td class="status">
-        <div class="<%= fmt_color(node.fd_used / node.fd_total) %>">
-          <%= node.fd_used %> / <%= node.fd_total %>
+        <div class="<%= fmt_color(node.sockets_used / node.sockets_total) %>">
+          <%= node.sockets_used %> / <%= node.sockets_total %>
        </div>
       </td>
     </tr>
