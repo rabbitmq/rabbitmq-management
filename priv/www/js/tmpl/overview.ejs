@@ -79,14 +79,14 @@
        </div>
      </td>
      <td class="status">
-       <div class="<%= fmt_color(node.proc_used / node.proc_total) %>">
+       <div class="<%= fmt_color(node.proc_used / node.proc_total,
+                                 PROCESS_THRESHOLDS) %>">
          <%= node.proc_used %> / <%= node.proc_total %>
        </div>
      </td>
      <td class="status">
 <% if (node.mem_total != 'memory_monitoring_disabled') { %>
-       <div class="<%= fmt_color(node.mem_used / node.mem_limit,
-                                 MEMORY_THRESHOLDS) %>">
+       <div class="<%= fmt_color(node.mem_used / node.mem_limit) %>">
          <%= fmt_bytes(node.mem_used) %> / <%= fmt_bytes(node.mem_limit) %>
        </div>
 <% } else { %>
