@@ -110,6 +110,14 @@ table.bindings { margin-bottom: 2em; }
 td.binding-endpoint span.object { border: 2px solid #bbb; padding: 10px; border-radius: 10px; -moz-border-radius: 10px; }
 td.binding-endpoint span.arrow { font-size: 200%; }
 
+#footer-nav { padding-top: 5px; }
+#footer-nav ul { float: left; list-style-type: none; padding: 0; margin: 0;}
+#footer-nav ul li { float: left; border-right: 1px solid #ccc; padding: 2px 5px 2px 0;}
+#footer-nav ul li + li { border-right: none; padding: 2px 5px;}
+#footer-nav ul li a { color: #888; text-decoration: none; }
+
+#debug { clear: both; }
+
 #scratch { display: none; }
 
 tr.alt1 td {

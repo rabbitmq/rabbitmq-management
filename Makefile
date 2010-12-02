@@ -1,11 +1,10 @@
 PACKAGE=rabbitmq-management
 APPNAME=rabbit_management
-DEPS=rabbitmq-mochiweb rabbitmq-server rabbitmq-erlang-client rabbitmq-management-agent
+DEPS=mochiweb rabbitmq-server rabbitmq-erlang-client rabbitmq-management-agent
 INTERNAL_DEPS=webmachine
 RUNTIME_DEPS=webmachine
 
-TEST_APPS=crypto inets mochiweb rabbit_mochiweb webmachine rabbit_management_agent rabbit_management amqp_client
-TEST_ARGS=-rabbit_mochiweb port 55672
+TEST_APPS=crypto inets mochiweb webmachine rabbit_management_agent rabbit_management amqp_client
 START_RABBIT_IN_TESTS=true
 TEST_COMMANDS=rabbit_mgmt_test_all:all_tests()
 
@@ -23,7 +22,7 @@ EXTRA_TARGETS=$(wildcard $(TEMPLATES_DIR)/*.ejs) \
 
 include ../include.mk
 
-priv/www-cli/rabbitmqadmin:
+priv/www/cli/rabbitmqadmin:
 	cp bin/rabbitmqadmin $@
 
 test: cleantest
