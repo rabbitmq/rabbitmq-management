@@ -118,8 +118,13 @@ pget(Key, List, Default) -> proplists:get_value(Key, List, Default).
 
 pset(Key, Value, List) -> [{Key, Value} | proplists:delete(Key, List)].
 
-id(Pid) when is_pid(Pid) -> rabbit_mgmt_format:pid(Pid);
-id(List) -> rabbit_mgmt_format:pid(pget(pid, List)).
+pid(Pid) when is_pid(Pid) -> rabbit_mgmt_format:pid(Pid).
+
+id(List) ->
+    case pget(name, List) of
+        Name = #resource{} -> Name;
+        _                  -> rabbit_mgmt_format:pid(pget(pid, List))
+    end.
 
 add(unknown, _) -> unknown;
 add(_, unknown) -> unknown;
@@ -257,6 +262,7 @@ handle_call({get_overview, Username}, _From, State = #state{tables = Tables}) ->
                 get_fine_stats(
                   [], [R || R = {Id, _, _}
                                 <- ets:tab2list(orddict:fetch(Type, Tables)),
+                            %% TODO lose augment
                             Filter(augment_msg_stats(format_id(Id), Tables),
                                    Name)])
         end,
@@ -320,7 +326,7 @@ handle_event(Event = #event{type = connection_closed}, State) ->
 handle_event(#event{type = channel_created, props = Stats},
              State = #state{tables = Tables}) ->
     ConnTable = orddict:fetch(connection_stats, Tables),
-    Conn = lookup_element(ConnTable, {id(pget(connection, Stats)), create}),
+    Conn = lookup_element(ConnTable, {pid(pget(connection, Stats)), create}),
     Name = rabbit_mgmt_format:print("~s:~w:~w",
                                     [pget(peer_address, Conn),
                                      pget(peer_port,    Conn),
@@ -342,7 +348,7 @@ handle_event(#event{type = channel_stats, props = Stats, timestamp = Timestamp},
 handle_event(Event = #event{type = channel_closed,
                             props = [{pid, Pid}]}, State) ->
     handle_deleted(channel_stats, Event, State),
-    [delete_fine_stats(Type, id(Pid), State) ||
+    [delete_fine_stats(Type, pid(Pid), State) ||
         Type <- ?FINE_STATS_TYPES],
     {ok, State};
 
@@ -368,11 +374,11 @@ handle_created(TName, Stats, Funs, State = #state{tables = Tables}) ->
 
 handle_stats(TName, Stats0, Timestamp, Funs,
              RatesKeys, State = #state{tables = Tables}) ->
+    Id = {id(Stats0), stats},
     Stats = lists:foldl(
               fun (K, StatsAcc) -> proplists:delete(K, StatsAcc) end,
-              Stats0, ?FINE_STATS_TYPES),
+              Stats0, [name | ?FINE_STATS_TYPES]),
     Table = orddict:fetch(TName, Tables),
-    Id = {id(Stats), stats},
     OldStats = lookup_element(Table, Id),
     OldTimestamp = lookup_element(Table, Id, 3),
     Stats1 = rates(Stats, Timestamp, OldStats, OldTimestamp, RatesKeys),
@@ -380,17 +386,16 @@ handle_stats(TName, Stats0, Timestamp, Funs,
     ets:insert(Table, {Id, Stats2, Timestamp}),
     {ok, State}.
 
-handle_deleted(TName, #event{props = [{pid, Pid}]},
-               State = #state{tables = Tables}) ->
+handle_deleted(TName, #event{props = Props}, State = #state{tables = Tables}) ->
     Table = orddict:fetch(TName, Tables),
-    ets:delete(Table, {id(Pid), create}),
-    ets:delete(Table, {id(Pid), stats}),
+    ets:delete(Table, {id(Props), create}),
+    ets:delete(Table, {id(Props), stats}),
     {ok, State}.
 
 handle_consumer(Fun, Props,
                 State = #state{tables = Tables}) ->
     P = rabbit_mgmt_format:format(
-          Props, [{fun rabbit_mgmt_format:pid/1, [queue, channel]}]),
+          Props, [{fun rabbit_mgmt_format:pid/1, [channel]}]),
     Table = orddict:fetch(consumers, Tables),
     Fun(Table, {pget(queue, P), pget(channel, P)}, P),
     {ok, State}.
@@ -432,9 +437,8 @@ delete_fine_stats(Type, ChPid, #state{tables = Tables}) ->
     ets:match_delete(Table, {{ChPid, '_'}, '_', '_'}),
     ets:match_delete(Table, {{ChPid, '_', '_'}, '_', '_'}).
 
-fine_stats_key(ChPid, {QPid, X})              -> {ChPid, id(QPid), X};
-fine_stats_key(ChPid, QPid) when is_pid(QPid) -> {ChPid, id(QPid)};
-fine_stats_key(ChPid, X)                      -> {ChPid, X}.
+fine_stats_key(ChPid, {Q, X}) -> {ChPid, Q, X};
+fine_stats_key(ChPid, QX)     -> {ChPid, QX}.
 
 created_event(Name, Type, Tables) ->
     Table = orddict:fetch(Type, Tables),
@@ -456,12 +460,17 @@ get_fine_stats(GroupBy, List) ->
               {Id, Stats, _Timestamp} <- List],
     group_sum(GroupBy, All).
 
-format_id({ChPid, #resource{name=XName, virtual_host=XVhost}}) ->
+format_id({ChPid,
+           #resource{name=XName, kind=exchange, virtual_host=XVhost}}) ->
     [{channel, ChPid}, {exchange, [{name, XName}, {vhost, XVhost}]}];
-format_id({ChPid, QPid}) ->
-    [{channel, ChPid}, {queue, QPid}];
-format_id({ChPid, QPid, #resource{name=XName, virtual_host=XVhost}}) ->
-    [{channel, ChPid}, {queue, QPid},
+format_id({ChPid,
+           #resource{name=QName, kind=queue, virtual_host=QVhost}}) ->
+    [{channel, ChPid}, {queue,    [{name, QName}, {vhost, QVhost}]}];
+format_id({ChPid,
+           #resource{name=QName, kind=queue,    virtual_host=QVhost},
+           #resource{name=XName, kind=exchange, virtual_host=XVhost}}) ->
+    [{channel, ChPid},
+     {queue,    [{name, QName}, {vhost, QVhost}]},
      {exchange, [{name, XName}, {vhost, XVhost}]}].
 
 %%----------------------------------------------------------------------------
@@ -470,11 +479,17 @@ merge_stats(Objs, Funs) ->
     [lists:foldl(fun (Fun, Props) -> Fun(Props) ++ Props end, Obj, Funs)
      || Obj <- Objs].
 
-basic_stats_fun(Type, Tables) ->
+basic_stats_fun(Type, IdFun, Tables) ->
     Table = orddict:fetch(Type, Tables),
     fun (Props) ->
-            zero_old_rates(lookup_element(Table, {pget(pid, Props), stats}))
+            zero_old_rates(lookup_element(Table, {IdFun(Props), stats}))
     end.
+
+pid_id_fun(Props) ->
+    pget(pid, Props).
+
+q_id_fun(Props) ->
+    rabbit_misc:r(pget(vhost, Props), queue, pget(name, Props)).
 
 fine_stats_fun(FineSpecs, Tables) ->
     FineStats = [{AttachName, AttachBy,
@@ -542,7 +557,7 @@ augment_msg_stats(Props, Tables) ->
 augment_msg_stats_fun(Tables) ->
     Funs = [{connection, fun augment_connection_pid/2},
             {channel,    fun augment_channel_pid/2},
-            {queue,      fun augment_queue_pid/2},
+            {queue,      fun augment_queue/2},
             {owner_pid,  fun augment_connection_pid/2}],
     fun (Props) -> augment(Props, Funs, Tables) end.
 
@@ -576,27 +591,20 @@ augment_connection_pid(Pid, Tables) ->
      {peer_address, pget(peer_address, Conn)},
      {peer_port,    pget(peer_port,    Conn)}].
 
-augment_queue_pid(Pid, _Tables) ->
-    %% TODO This should be in rabbit_amqqueue?
-    case mnesia:dirty_match_object(
-           rabbit_queue,
-           #amqqueue{pid = rabbit_misc:string_to_pid(Pid), _ = '_'}) of
-        [Q] -> Name = Q#amqqueue.name,
-               [{name,  Name#resource.name},
-                {vhost, Name#resource.virtual_host}];
-        []  -> [] %% Queue went away before we could get its details.
-    end.
+augment_queue(Name, _Tables) ->
+    [{name,  Name#resource.name},
+     {vhost, Name#resource.virtual_host}].
 
 %%----------------------------------------------------------------------------
 
 basic_queue_stats(Objs, Tables) ->
-    merge_stats(Objs, [basic_stats_fun(queue_stats, Tables),
+    merge_stats(Objs, [basic_stats_fun(queue_stats, fun q_id_fun/1, Tables),
                        augment_msg_stats_fun(Tables)]).
 
 queue_stats(Objs, FineSpecs, Tables) ->
-    merge_stats(Objs, [basic_stats_fun(queue_stats, Tables),
+    merge_stats(Objs, [basic_stats_fun(queue_stats, fun q_id_fun/1, Tables),
                        consumer_details_fun(
-                         fun (Props) -> {pget(pid, Props), '_'} end, Tables),
+                         fun (Props) -> {q_id_fun(Props), '_'} end, Tables),
                        fine_stats_fun(FineSpecs, Tables),
                        augment_msg_stats_fun(Tables)]).
 
@@ -605,11 +613,12 @@ exchange_stats(Objs, FineSpecs, Tables) ->
                        augment_msg_stats_fun(Tables)]).
 
 connection_stats(Objs, Tables) ->
-    merge_stats(Objs, [basic_stats_fun(connection_stats, Tables),
+    merge_stats(Objs, [basic_stats_fun(connection_stats, fun pid_id_fun/1,
+                                       Tables),
                        augment_msg_stats_fun(Tables)]).
 
 channel_stats(Objs, FineSpecs, Tables) ->
-    merge_stats(Objs, [basic_stats_fun(channel_stats, Tables),
+    merge_stats(Objs, [basic_stats_fun(channel_stats, fun pid_id_fun/1, Tables),
                        consumer_details_fun(
                          fun (Props) -> {'_', pget(pid, Props)} end, Tables),
                        fine_stats_fun(FineSpecs, Tables),
