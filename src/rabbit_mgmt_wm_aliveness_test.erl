@@ -43,16 +43,14 @@ to_json(ReqData, Context = #context{ user = #user { username = Username },
                           virtual_host = rabbit_mgmt_util:vhost(ReqData)},
     %% TODO use network connection (need to check what we're bound to)
     {ok, Conn} = amqp_connection:start(direct, Params),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {ok, Ch} = amqp_connection:open_channel(
+                   Conn, {amqp_direct_consumer, [self()]}),
     amqp_channel:call(Ch, #'queue.declare'{ queue = ?QUEUE }),
     amqp_channel:call(Ch,
                       #'basic.publish'{ routing_key = ?QUEUE },
                       #amqp_msg{payload = <<"test_message">>}),
-    amqp_channel:subscribe(Ch, #'basic.consume'{queue = ?QUEUE,
-                                                no_ack = true}, self()),
-    receive
-        #'basic.consume_ok'{consumer_tag = CTag} -> ok
-    end,
+    amqp_channel:call(Ch, #'basic.consume'{queue = ?QUEUE, no_ack = true}),
+    CTag = receive #'basic.consume_ok'{consumer_tag = CT} -> CT end,
     receive
         {#'basic.deliver'{}, _} -> ok
     end,

@@ -317,12 +317,9 @@ basic_get(Chan, Q, ExplicitAck, AutoAck) ->
 %% NB: Using AutoAck will actually consume everything.
 consume(Chan, Q, Count, ExplicitAck, AutoAck) ->
     amqp_channel:call(Chan, #'basic.qos' { prefetch_count = Count }),
-    amqp_channel:subscribe(Chan, #'basic.consume' { queue = Q,
-                                                    no_ack = AutoAck },
-                           self()),
-    receive
-        #'basic.consume_ok'{consumer_tag = CTag} -> ok
-    end,
+    amqp_channel:register_default_consumer(Chan, self()),
+    amqp_channel:call(Chan, #'basic.consume' { queue = Q, no_ack = AutoAck }),
+    CTag = receive #'basic.consume_ok'{consumer_tag = CT} -> CT end,
     [receive {#'basic.deliver'{}, _} -> ok end || _ <- lists:seq(1, Count)],
     amqp_channel:call(Chan, #'basic.cancel' { consumer_tag = CTag }),
     receive
