@@ -18,6 +18,8 @@
 
 -behaviour(gen_server).
 
+-export([prof_start/0, prof_stop/0]).
+
 -export([start_link/0]).
 
 -export([get_queues/1, get_queue/1, get_exchanges/1, get_exchange/1,
@@ -199,10 +201,22 @@ if_unknown(Val,    _Def) -> Val.
 
 %%----------------------------------------------------------------------------
 
+prof_start() ->
+    safe_call(prof_start, ok).
+
+prof_stop() ->
+    ok = fprof:trace([stop]),
+    ok = fprof:profile([{file, "/tmp/fprof.trace"}]),
+    ok = fprof:analyse([{dest, "/tmp/fprof.txt"}]).
+
 init([]) ->
     {ok, #state{tables = orddict:from_list(
                            [{Key, ets:new(anon, [private, ordered_set])} ||
                                Key <- ?TABLES])}}.
+
+handle_call(prof_start, _From, State) ->
+    ok = fprof:trace([start, {file, "/tmp/fprof.trace"}]),
+    {reply, ok, State};
 
 handle_call({get_queue, Q0}, _From, State = #state{tables = Tables}) ->
     [Q1] = adjust_hibernated_memory_use(detail_queue_stats([Q0], Tables)),
