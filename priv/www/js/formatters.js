@@ -105,10 +105,7 @@ function args_to_params(obj) {
 }
 
 function fmt_channel_mode(ch) {
-    if (ch.transactional) {
-        return '<acronym title="Transactional">T</acronym>';
-    }
-    else if (ch.confirm) {
+    if (ch.confirm) {
         return '<acronym title="Confirm">C</acronym>';
     }
     else {

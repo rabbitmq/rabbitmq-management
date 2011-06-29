@@ -42,8 +42,6 @@ HELP = {
       <dl> \
         <dt><acronym title="Confirm">C</acronym> &ndash; confirm</dt> \
         <dd>Channel will send streaming publish confirmations.</dd> \
-        <dt><acronym title="Transactional">T</acronym> &ndash; transactional</dt> \
-        <dd>Channel is transactional.</dd> \
       <dl>',
 
     'file-descriptors':
