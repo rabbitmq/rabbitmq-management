@@ -38,7 +38,7 @@ HELP = {
       'The outgoing rate is the rate at which messages enter queues, having been published directly to this exchange.',
 
     'channel-mode':
-      'Channel guarantee mode. Can be one of the following, or neither:<br/> \
+      'Channel guarantee mode. Can be a combination of the following, or neither:<br/> \
       <dl> \
         <dt><acronym title="Confirm">C</acronym> &ndash; confirm</dt> \
         <dd>Channel will send streaming publish confirmations.</dd> \

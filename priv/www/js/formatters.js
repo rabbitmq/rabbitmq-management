@@ -105,15 +105,14 @@ function args_to_params(obj) {
 }
 
 function fmt_channel_mode(ch) {
+    var r = '';
     if (ch.transactional) {
-        return '<acronym title="Transactional">T</acronym>';
+        r += '<acronym title="Transactional">T</acronym>';
     }
-    else if (ch.confirm) {
-        return '<acronym title="Confirm">C</acronym>';
+    if (ch.confirm) {
+        r += '<acronym title="Confirm">C</acronym>';
     }
-    else {
-        return '';
-    }
+    return r;
 }
 
 function fmt_color(r, thresholds) {
