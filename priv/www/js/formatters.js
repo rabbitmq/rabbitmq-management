@@ -387,22 +387,35 @@ function link_to(name, url) {
 function message_rates(stats) {
     var res = "";
     if (keys(stats).length > 0) {
-        var items = [['Publish', 'publish'], ['Confirm', 'confirm'],
-                     ['Deliver', 'deliver'],
-                     ['Of which redelivered', 'redeliver'],
-                     ['Acknowledge', 'ack'],
-                     ['Get', 'get'], ['Deliver (noack)', 'deliver_no_ack'],
-                     ['Get (noack)', 'get_no_ack'],
-                     ['Return (mandatory)', 'return_unroutable'],
-                     ['Return (immediate)', 'return_not_delivered']];
+        var delta = 0;
+        if ('incoming_details' in stats) {
+            delta = stats.incoming_details.rate;
+        }
+
+        var items = [['Publish', 'publish', false],
+                     ['Confirm', 'confirm', false],
+                     ['Deliver', 'deliver', false],
+                     ['Of which redelivered', 'redeliver', false],
+                     ['Acknowledge', 'ack', true],
+                     ['Get', 'get', false],
+                     ['Deliver (noack)', 'deliver_no_ack', true],
+                     ['Get (noack)', 'get_no_ack', true],
+                     ['Return (mandatory)', 'return_unroutable', false],
+                     ['Return (immediate)', 'return_not_delivered', false]];
         for (var i in items) {
             var name = items[i][0];
             var key = items[i][1] + '_details';
+            var settles = items[i][2];
             if (key in stats) {
-                res += '<div class="highlight">' + name;
-                res += '<strong>' + Math.round(stats[key].rate) + '</strong>';
-                res += 'msg/s</div>';
+                res += message_rate(name, stats[key].rate);
+                if (settles) {
+                    delta -= stats[key].rate;
+                }
             }
+        }
+
+        if (delta != 0) {
+            res += message_rate('Delta', delta);
         }
 
         if (res == "") {
@@ -414,6 +427,12 @@ function message_rates(stats) {
     }
 
     return res;
+}
+
+function message_rate(name, rate) {
+    return '<div class="highlight">' + name +
+        '<strong>' + Math.round(rate) + '</strong>' +
+        'msg/s</div>';
 }
 
 function maybe_truncate(items) {
