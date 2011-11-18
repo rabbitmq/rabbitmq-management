@@ -269,8 +269,12 @@ handle_call({get_overview, User}, _From, State = #state{tables = Tables}) ->
                                    Name)], State)
         end,
     Publish = F(channel_exchange_stats, exchange),
+    Incoming0 = F(channel_queue_exchange_stats, queue_details),
+    Incoming1 = [{incoming,         pget(publish,         Incoming0)},
+                 {incoming_details, pget(publish_details, Incoming0)}],
+    Incoming = [{K, V} || {K, V} <- Incoming1, V =/= unknown],
     Consume = F(channel_queue_stats, queue_details),
-    {reply, [{message_stats, Publish ++ Consume},
+    {reply, [{message_stats, Publish ++ Incoming ++ Consume},
              {queue_totals, Totals}], State};
 
 handle_call(_Request, _From, State) ->
