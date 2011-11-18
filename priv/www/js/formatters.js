@@ -395,7 +395,7 @@ function message_rates(stats) {
         var items = [['Publish', 'publish', false],
                      ['Confirm', 'confirm', false],
                      ['Deliver', 'deliver', false],
-                     ['Of which redelivered', 'redeliver', false],
+                     ['Redelivered', 'redeliver', false],
                      ['Acknowledge', 'ack', true],
                      ['Get', 'get', false],
                      ['Deliver (noack)', 'deliver_no_ack', true],
