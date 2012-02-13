@@ -183,6 +183,12 @@ def make_parser():
         if 'default' in kwargs:
             default_options[kwargs['dest']] = kwargs['default']
 
+    add_option("-c", "--config", dest="config",
+               help="configuration file [default if node is specified: ~/.rabbitmqadmin.conf]",
+               metavar="CONFIG")
+    add_option("-N", "--node", dest="node",
+               help="node described in the configuration file",
+               metavar="NODE")
     add_option("-H", "--host", dest="hostname", default="localhost",
                help="connect to host HOST [default: %default]",
                metavar="HOST")
