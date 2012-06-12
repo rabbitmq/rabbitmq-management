@@ -15,8 +15,8 @@ body { font: 12px Verdana,sans-serif; color: #484848; padding: 8px 35px; }
 #menu a.selected:hover { color: white; }
 #vhost-form { float: right; padding: 0; margin: 0; }
 
-#main.with-rhs { margin-right: 160px; }
-#rhs { float: right; width: 150px; padding-top: 10px; }
+#main.with-rhs { margin-right: 210px; }
+#rhs { float: right; width: 200px; padding-top: 10px; }
 #rhs ul { padding: 0; margin: 0; }
 #rhs li { list-style-type: none; padding: 0; }
 #rhs a { display: block; padding: 0.5em; color: #444; font-weight: bold; text-decoration: none; }
