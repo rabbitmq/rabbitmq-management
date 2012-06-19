@@ -2,7 +2,7 @@
     <table class="list">
       <thead>
         <tr>
-<% if (mode == 'queue') { %>
+<% if (mode === 'queue') { %>
           <th>Channel</th>
           <th>Consumer tag</th>
 <% } else { %>
@@ -18,7 +18,7 @@
     var consumer = consumers[i];
 %>
       <tr<%= alt_rows(i) %>>
-<% if (mode == 'queue') { %>
+<% if (mode === 'queue') { %>
         <td><%= link_channel(consumer.channel_details.name) %></td>
         <td><%= fmt_string(consumer.consumer_tag) %></td>
 <% } else { %>

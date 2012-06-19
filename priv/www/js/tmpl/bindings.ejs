@@ -3,7 +3,7 @@
     <table class="list bindings">
       <thead>
         <tr>
-<% if (mode == 'exchange_source') { %>
+<% if (mode === 'exchange_source') { %>
           <th>To</th>
 <% } else { %>
           <th>From</th>
@@ -19,12 +19,12 @@
                var binding = bindings[i];
         %>
            <tr<%= alt_rows(i)%>>
-<% if (mode == 'queue' || mode == 'exchange_destination') { %>
+<% if (mode === 'queue' || mode === 'exchange_destination') { %>
              <td>
                <%= link_exchange(binding.vhost, binding.source) %>
                <sub>Exchange</sub>
              </td>
-<% } else if (binding.destination_type == 'exchange') { %>
+<% } else if (binding.destination_type === 'exchange') { %>
              <td>
                <%= link_exchange(binding.vhost, binding.destination) %>
                <sub>Exchange</sub>

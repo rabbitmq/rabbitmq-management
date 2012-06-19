@@ -5,7 +5,7 @@
 <div class="hider updatable">
 <% if (!node.running) { %>
 <p class="warning">Node not running</p>
-<% } else if (node.os_pid == undefined) { %>
+<% } else if (node.os_pid === undefined) { %>
 <p class="warning">Node statistics not available</p>
 <% } else { %>
   <table class="facts">
@@ -109,7 +109,7 @@
     <tr>
       <th>Type</th>
       <td>
-       <% if (node.type == 'disc') { %>
+       <% if (node.type === 'disc') { %>
          <acronym title="Broker definitions are held on disc.">Disc</acronym>
        <% } else { %>
          <acronym title="Broker definitions are held in RAM. Messages will still be written to disc if necessary.">RAM</acronym>
@@ -127,7 +127,7 @@
 <div class="hider updatable">
 <% if (!node.running) { %>
 <p class="warning">Node not running</p>
-<% } else if (node.os_pid == undefined) { %>
+<% } else if (node.os_pid === undefined) { %>
 <p class="warning">Node statistics not available</p>
 <% } else { %>
 <table class="list">
@@ -157,7 +157,7 @@
 <div class="hider updatable">
 <% if (!node.running) { %>
 <p class="warning">Node not running</p>
-<% } else if (node.os_pid == undefined) { %>
+<% } else if (node.os_pid === undefined) { %>
 <p class="warning">Node statistics not available</p>
 <% } else { %>
 <h3>Exchange types</h3>
@@ -173,7 +173,7 @@
 <div class="hider updatable">
 <% if (!node.running) { %>
 <p class="warning">Node not running</p>
-<% } else if (node.os_pid == undefined) { %>
+<% } else if (node.os_pid === undefined) { %>
 <p class="warning">Node statistics not available</p>
 <% } else { %>
   <div class="box">

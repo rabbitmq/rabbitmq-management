@@ -71,11 +71,11 @@ dispatcher_add(function(sammy) {
             return false;
         });
     sammy.del('#/queues', function() {
-            if (this.params['mode'] == 'delete') {
+            if (this.params['mode'] === 'delete') {
                 if (sync_delete(this, '/queues/:vhost/:name'))
                     go_to('#/queues');
             }
-            else if (this.params['mode'] == 'purge') {
+            else if (this.params['mode'] === 'purge') {
                 if (sync_delete(this, '/queues/:vhost/:name/contents')) {
                     show_popup('info', "Queue purged");
                     update_partial();

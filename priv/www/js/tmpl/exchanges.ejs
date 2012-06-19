@@ -12,7 +12,7 @@
    <th><%= fmt_sort('Name',         'name') %></th>
    <th><%= fmt_sort('Type',         'type') %></th>
    <th>Parameters</th>
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
    <th><%= fmt_sort('Message rate',   'message_stats_in.publish_details.rate') %></th>
 <% } %>
   </tr>

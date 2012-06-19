@@ -8,7 +8,7 @@ $(document).ready(function() {
 
 function dispatcher_add(fun) {
     dispatcher_modules.push(fun);
-    if (dispatcher_modules.length == extension_count) {
+    if (dispatcher_modules.length === extension_count) {
         start_app();
     }
 }
@@ -23,7 +23,7 @@ function start_app() {
     app = $.sammy(dispatcher);
     app.run();
     var url = this.location.toString();
-    if (url.indexOf('#') == -1) {
+    if (url.indexOf('#') === -1) {
         this.location = url + '#/';
     }
 }
@@ -32,7 +32,7 @@ function setup_constant_events() {
     $('#update-every').change(function() {
             var interval = $(this).val();
             store_pref('interval', interval);
-            if (interval == '')
+            if (interval === '')
                 interval = null;
             else
                 interval = parseInt(interval);
@@ -61,7 +61,7 @@ function update_vhosts() {
     for (var i = 0; i < vhosts.length; i++) {
         var vhost = vhosts[i].name;
         select.options[i + 1] = new Option(vhost, vhost);
-        if (vhost == current_vhost) index = i + 1;
+        if (vhost === current_vhost) index = i + 1;
     }
     select.selectedIndex = index;
     current_vhost = select.options[index].value;
@@ -88,8 +88,8 @@ function update_interval() {
     var intervalStr = get_pref('interval');
     var interval;
 
-    if (intervalStr == null)    interval = 5000;
-    else if (intervalStr == '') interval = null;
+    if (intervalStr === null)    interval = 5000;
+    else if (intervalStr === '') interval = null;
     else                        interval = parseInt(intervalStr);
 
     if (isNaN(interval)) interval = null; // Prevent DoS if cookie malformed
@@ -99,7 +99,7 @@ function update_interval() {
     var select = $('#update-every').get(0);
     var opts = select.options;
     for (var i = 0; i < opts.length; i++) {
-        if (opts[i].value == intervalStr) {
+        if (opts[i].value === intervalStr) {
             select.selectedIndex = i;
             break;
         }
@@ -210,12 +210,12 @@ function show(pair) {
 }
 
 function leaf(pair) {
-    return typeof(nav(pair)) == 'string';
+    return typeof(nav(pair)) === 'string';
 }
 
 function contains_current_highlight(val) {
     if (leaf(val)) {
-        return current_highlight == nav(val);
+        return current_highlight === nav(val);
     }
     else {
         var b = false;
@@ -233,7 +233,7 @@ function obj_to_ul(val) {
         var obj = val[k];
         if (leaf(obj) && show(obj)) {
             res += '<a href="' + nav(obj) + '"' +
-                (current_highlight == nav(obj) ? ' class="selected"' : '') +
+                (current_highlight === nav(obj) ? ' class="selected"' : '') +
                 '>' + k + '</a>';
         }
         else {
@@ -329,10 +329,10 @@ function postprocess() {
             toggle_visibility($(this));
         });
     $('label').map(function() {
-            if ($(this).attr('for') == '') {
+            if ($(this).attr('for') === '') {
                 var id = 'auto-label-' + Math.floor(Math.random()*1000000000);
                 var input = $(this).parents('tr').first().find('input, select');
-                if (input.attr('id') == '') {
+                if (input.attr('id') === '') {
                     $(this).attr('for', id);
                     input.attr('id', id);
                 }
@@ -351,7 +351,7 @@ function postprocess() {
         });
     $('.controls-appearance').change(function() {
         var controls = $(this).attr('controls-divs');
-        if ($(this).val() == 'true') {
+        if ($(this).val() === 'true') {
             $('#' + controls + '-yes').slideDown(100);
             $('#' + controls + '-no').slideUp(100);
         } else {
@@ -375,7 +375,7 @@ function postprocess() {
 function postprocess_partial() {
     $('.sort').click(function() {
             var sort = $(this).attr('sort');
-            if (current_sort == sort) {
+            if (current_sort === sort) {
                 current_sort_reverse = ! current_sort_reverse;
             }
             else {
@@ -399,7 +399,7 @@ function update_multifields() {
                     largest_id = Math.max(id, largest_id);
                     var key = $(this).val();
                     var value = $(this).next('input').val();
-                    if (key == '' && value == '') {
+                    if (key === '' && value === '') {
                         if (empty_found) {
                             $(this).parent().remove();
                         }
@@ -435,11 +435,11 @@ function setup_visibility() {
         var pref = section_pref(current_template,
                                 $(this).children('h2').text());
         var show = get_pref(pref);
-        if (show == null) {
+        if (show === null) {
             show = $(this).hasClass('section');
         }
         else {
-            show = show == 't';
+            show = show === 't';
         }
         if (show) {
             $(this).addClass('section-visible');
@@ -501,7 +501,7 @@ function get_msgs(params) {
     var path = fill_path_template('/queues/:vhost/:name/get', params);
     with_req('POST', path, JSON.stringify(params), function(resp) {
             var msgs = jQuery.parseJSON(resp.responseText);
-            if (msgs.length == 0) {
+            if (msgs.length === 0) {
                 show_popup('info', 'Queue is empty');
             } else {
                 $('#msg-wrapper').slideUp(200);
@@ -544,9 +544,9 @@ function format(template, json) {
 
 function update_status(status) {
     var text;
-    if (status == 'ok')
+    if (status === 'ok')
         text = "Last update: " + fmt_date(new Date());
-    else if (status == 'error') {
+    else if (status === 'error') {
         var next_try = new Date(new Date().getTime() + timer_interval);
         text = "Error: could not connect to server since " +
             fmt_date(last_successful_connect) + ".<br/>Will retry at " +
@@ -564,7 +564,7 @@ function with_req(method, path, body, fun) {
     var req = xmlHttpRequest();
     req.open(method, 'api' + path, true );
     req.onreadystatechange = function () {
-        if (req.readyState == 4) {
+        if (req.readyState === 4) {
             if (check_bad_response(req, true)) {
                 last_successful_connect = new Date();
                 fun(req);
@@ -604,13 +604,13 @@ function sync_req(type, params0, path_template) {
     req.open(type, 'api' + path, false);
     req.setRequestHeader('content-type', 'application/json');
     try {
-        if (type == 'GET')
+        if (type === 'GET')
             req.send(null);
         else
             req.send(JSON.stringify(params));
     }
     catch (e) {
-        if (e.number == 0x80004004) {
+        if (e.number === 0x80004004) {
             // 0x80004004 means "Operation aborted."
             // http://support.microsoft.com/kb/186063
             // MSIE6 appears to do this in response to HTTP 204.
@@ -618,7 +618,7 @@ function sync_req(type, params0, path_template) {
     }
 
     if (check_bad_response(req, false)) {
-        if (type == 'GET')
+        if (type === 'GET')
             return req.responseText;
         else
             return true;
@@ -629,12 +629,12 @@ function sync_req(type, params0, path_template) {
 }
 
 function check_bad_response(req, full_page_404) {
-    // 1223 == 204 - see http://www.enhanceie.com/ie/bugs.asp
+    // 1223 === 204 - see http://www.enhanceie.com/ie/bugs.asp
     // MSIE7 and 8 appear to do this in response to HTTP 204.
-    if ((req.status >= 200 && req.status < 300) || req.status == 1223) {
+    if ((req.status >= 200 && req.status < 300) || req.status === 1223) {
         return true;
     }
-    else if (req.status == 404 && full_page_404) {
+    else if (req.status === 404 && full_page_404) {
         var html = format('404', {});
         replace_content('main', html);
     }
@@ -643,16 +643,16 @@ function check_bad_response(req, full_page_404) {
         if (typeof(reason) != 'string') reason = JSON.stringify(reason);
         show_popup('warn', reason);
     }
-    else if (req.status == 408) {
+    else if (req.status === 408) {
         update_status('timeout');
     }
-    else if (req.status == 0) { // Non-MSIE: could not connect
+    else if (req.status === 0) { // Non-MSIE: could not connect
         update_status('error');
     }
     else if (req.status > 12000) { // MSIE: could not connect
         update_status('error');
     }
-    else if (req.status == 503) { // Proxy: could not connect
+    else if (req.status === 503) { // Proxy: could not connect
         update_status('error');
     }
     else {
@@ -668,7 +668,7 @@ function fill_path_template(template, params) {
     var re = /:[a-zA-Z_]*/g;
     return template.replace(re, function(m) {
             var str = esc(params[m.substring(1)]);
-            if (str == '') {
+            if (str === '') {
                 throw(m.substring(1) + " is required");
             }
             return str;
@@ -688,28 +688,28 @@ function collapse_multifields(params0) {
         var match = key.match(/([a-z]*)_([0-9]*)_mfkey/);
         var match2 = key.match(/[a-z]*_[0-9]*_mfvalue/);
         var match3 = key.match(/[a-z]*_[0-9]*_mftype/);
-        if (match == null && match2 == null && match3 == null) {
+        if (match === null && match2 === null && match3 === null) {
             params[key] = params0[key];
         }
-        else if (match == null) {
+        else if (match === null) {
             // Do nothing, value is handled below
         }
         else {
             var name = match[1];
             var id = match[2];
-            if (params[name] == undefined) {
+            if (params[name] === undefined) {
                 params[name] = {};
             }
             if (params0[key] != "") {
                 var k = params0[key];
                 var v = params0[name + '_' + id + '_mfvalue'];
                 var t = params0[name + '_' + id + '_mftype'];
-                if (t == 'boolean') {
+                if (t === 'boolean') {
                     if (v != 'true' && v != 'false')
                         throw(k + ' must be "true" or "false"; got ' + v);
-                    params[name][k] = (v == 'true');
+                    params[name][k] = (v === 'true');
                 }
-                else if (t == 'number') {
+                else if (t === 'number') {
                     var n = parseFloat(v);
                     if (isNaN(n))
                         throw(k + ' must be a number; got ' + v);
@@ -729,13 +729,13 @@ function add_known_arguments(params) {
         var v = params[k];
         if (v != undefined && v != '') {
             var type = KNOWN_ARGS[k].type;
-            if (type == 'int') {
+            if (type === 'int') {
                 v = parseInt(v);
                 if (isNaN(v)) {
                     throw(k + " must be an integer.");
                 }
             }
-            else if (type == 'array' && typeof(v) == 'string') {
+            else if (type === 'array' && typeof(v) === 'string') {
                 v = v.split(' ');
             }
             params.arguments[k] = v;
@@ -748,7 +748,7 @@ function add_known_arguments(params) {
 
 function check_password(params) {
     if (params['password'] != undefined) {
-        if (params['password'] == '') {
+        if (params['password'] === '') {
             throw("Please specify a password.");
         }
         if (params['password'] != params['password_confirm']) {
@@ -762,7 +762,7 @@ function check_password(params) {
 
 function maybe_remove_fields(params) {
     $('.controls-appearance').each(function(index) {
-        if ($(this).val() == 'false') {
+        if ($(this).val() === 'false') {
             delete params[$(this).attr('param-name')];
             delete params[$(this).attr('name')];
         }

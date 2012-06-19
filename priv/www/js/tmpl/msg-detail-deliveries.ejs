@@ -5,7 +5,7 @@
 %>
 <table class="list list-with-total">
   <tr>
-<% if (mode == 'queue') { %>
+<% if (mode === 'queue') { %>
     <th>Channel</th>
 <% } else { %>
     <th>Queue</th>
@@ -23,7 +23,7 @@
      var del = object[i];
 %>
      <tr<%= alt_rows(i)%>>
-<% if (mode == 'queue') { %>
+<% if (mode === 'queue') { %>
        <td><%= link_channel(del.channel_details.name) %></td>
 <% } else { %>
        <td><%= link_queue(del.queue_details.vhost, del.queue_details.name) %></td>

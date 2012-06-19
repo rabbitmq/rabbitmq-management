@@ -7,12 +7,12 @@ PROCESS_THRESHOLDS=[[0.75, 'red'],
                     [0.5, 'yellow']];
 
 function fmt_string(str) {
-    if (str == undefined) return UNKNOWN_REPR;
+    if (str === undefined) return UNKNOWN_REPR;
     return fmt_escape_html("" + str);
 }
 
 function fmt_bytes(bytes) {
-    if (bytes == undefined) return UNKNOWN_REPR;
+    if (bytes === undefined) return UNKNOWN_REPR;
 
     function f(n, p) {
         if (n > 1024) return f(n / 1024, p + 1);
@@ -23,11 +23,11 @@ function fmt_bytes(bytes) {
     var num = num_power[0];
     var power = num_power[1];
     var powers = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    return (power == 0 ? num.toFixed(0) : num.toFixed(1)) + powers[power];
+    return (power === 0 ? num.toFixed(0) : num.toFixed(1)) + powers[power];
 }
 
 function fmt_boolean(b) {
-    if (b == undefined) return UNKNOWN_REPR;
+    if (b === undefined) return UNKNOWN_REPR;
 
     return b ? "&#9679;" : "&#9675;";
 }
@@ -43,7 +43,7 @@ function fmt_date(d) {
 }
 
 function fmt_time(t, suffix) {
-    if (t == undefined || t == 0) return '';
+    if (t === undefined || t === 0) return '';
     return t + suffix;
 }
 
@@ -76,7 +76,7 @@ function args_to_params(obj) {
             res[k] = obj.arguments[k];
         }
         else {
-            if (res.arguments == undefined) res.arguments = {};
+            if (res.arguments === undefined) res.arguments = {};
             res.arguments[k] = obj.arguments[k];
         }
     }
@@ -97,14 +97,14 @@ function fmt_mirrors(queue) {
     var unsynced = queue.slave_nodes || [];
     unsynced = jQuery.grep(unsynced,
                            function (node, i) {
-                               return jQuery.inArray(node, synced) == -1
+                               return jQuery.inArray(node, synced) === -1
                            });
     var res = '';
     if (synced.length > 0) {
         res += ' <acronym title="Synchronised mirrors: ' + synced + '">+' +
             synced.length + '</acronym>';
     }
-    if (synced.length == 0 && unsynced.length > 0) {
+    if (synced.length === 0 && unsynced.length > 0) {
         res += ' <acronym title="There are no synchronised mirrors">+0</acronym>';
     }
     if (unsynced.length > 0) {
@@ -127,7 +127,7 @@ function fmt_channel_mode(ch) {
 }
 
 function fmt_color(r, thresholds) {
-    if (r == undefined) return '';
+    if (r === undefined) return '';
 
     for (var i in thresholds) {
         var threshold = thresholds[i][0];
@@ -142,7 +142,7 @@ function fmt_color(r, thresholds) {
 
 function fmt_rate(obj, name, show_total, cssClass) {
     var res = fmt_rate0(obj, name, fmt_rate_num, show_total);
-    if (cssClass == undefined || res == '') {
+    if (cssClass === undefined || res === '') {
         return res;
     }
     else {
@@ -151,7 +151,7 @@ function fmt_rate(obj, name, show_total, cssClass) {
 }
 
 function fmt_rate_num(num) {
-    if (num == undefined) return UNKNOWN_REPR;
+    if (num === undefined) return UNKNOWN_REPR;
     else if (num < 1)     return num.toFixed(2);
     else if (num < 10)    return num.toFixed(1);
     else                  return num.toFixed(0);
@@ -162,7 +162,7 @@ function fmt_rate_bytes(obj, name) {
 }
 
 function fmt_rate0(obj, name, fmt, show_total) {
-    if (obj == undefined || obj[name] == undefined) return '';
+    if (obj === undefined || obj[name] === undefined) return '';
     var res = '';
     if (obj[name + '_details'] != undefined) {
         res = fmt(obj[name + '_details'].rate) + '/s';
@@ -182,15 +182,15 @@ function fmt_deliver_rate(obj, show_redeliver, cssClass) {
 }
 
 function is_stat_empty(obj, name) {
-    if (obj == undefined
-        || obj[name] == undefined
-        || obj[name + '_details'] == undefined
+    if (obj === undefined
+        || obj[name] === undefined
+        || obj[name + '_details'] === undefined
         || obj[name + '_details'].rate < 0.00001) return true;
     return false;
 }
 
 function is_col_empty(objects, name, accessor) {
-    if (accessor == undefined) accessor = function(o) {return o.message_stats;};
+    if (accessor === undefined) accessor = function(o) {return o.message_stats;};
     for (var i = 0; i < objects.length; i++) {
         var object = objects[i];
         if (!is_stat_empty(accessor(object), name)) {
@@ -201,12 +201,12 @@ function is_col_empty(objects, name, accessor) {
 }
 
 function fmt_exchange(name) {
-    return name == '' ? '(AMQP default)' : fmt_escape_html(name);
+    return name === '' ? '(AMQP default)' : fmt_escape_html(name);
 }
 
 function fmt_exchange_type(type) {
     for (var i in exchange_types) {
-        if (exchange_types[i].name == type) {
+        if (exchange_types[i].name === type) {
             return fmt_escape_html(type);
         }
     }
@@ -216,7 +216,7 @@ function fmt_exchange_type(type) {
 }
 
 function fmt_exchange_url(name) {
-    return name == '' ? 'amq.default' : fmt_escape_html(name);
+    return name === '' ? 'amq.default' : fmt_escape_html(name);
 }
 
 function fmt_download_filename(host) {
@@ -226,7 +226,7 @@ function fmt_download_filename(host) {
 }
 
 function fmt_fd_used(used) {
-    if (used == 'install_handle_from_sysinternals') {
+    if (used === 'install_handle_from_sysinternals') {
         return '<a href="http://technet.microsoft.com/en-us/sysinternals/bb896655" title="Install handle.exe from sysinternals to see used file descriptors - click for the download page.">?</a>';
     }
     else {
@@ -263,7 +263,7 @@ function fmt_amqp_value(val) {
         return fmt_table_short(val);
     } else {
         var t = typeof(val);
-        if (t == 'string') {
+        if (t === 'string') {
             return '<acronym class="type" title="string">' +
                 fmt_escape_html(val) + '</acronym>';
         } else {
@@ -289,7 +289,7 @@ function fmt_amqp_value_flat(val) {
         return '[' + val2.join(",") + ']';
     } else if (val instanceof Object) {
         return '(' + fmt_table_flat(val) + ')';
-    } else if (typeof(val) == 'string') {
+    } else if (typeof(val) === 'string') {
         return fmt_escape_html(val);
     } else {
         return val;
@@ -313,7 +313,7 @@ function fmt_uptime(u) {
 
 function fmt_rabbit_version(applications) {
     for (var i in applications) {
-        if (applications[i].name == 'rabbit') {
+        if (applications[i].name === 'rabbit') {
             return applications[i].version;
         }
     }
@@ -321,7 +321,7 @@ function fmt_rabbit_version(applications) {
 }
 
 function fmt_idle(obj) {
-    if (obj.idle_since == undefined) {
+    if (obj.idle_since === undefined) {
         return 'Active';
     } else {
         return '<acronym title="Idle since ' + obj.idle_since +
@@ -330,7 +330,7 @@ function fmt_idle(obj) {
 }
 
 function fmt_idle_long(obj) {
-    if (obj.idle_since == undefined) {
+    if (obj.idle_since === undefined) {
         return 'Active';
     } else {
         return 'Idle since<br/>' + obj.idle_since;
@@ -353,13 +353,13 @@ function fmt_escape_html0(txt) {
 }
 
 function fmt_maybe_wrap(txt, encoding) {
-    if (encoding == 'string') return fmt_escape_html(txt);
+    if (encoding === 'string') return fmt_escape_html(txt);
 
     var WRAP = 120;
     var res = '';
     while (txt != '') {
         var i = txt.indexOf('\n');
-        if (i == -1 || i > WRAP) {
+        if (i === -1 || i > WRAP) {
             i = Math.min(WRAP, txt.length);
             res += txt.substring(0, i) + '\n';
             txt = txt.substring(i);
@@ -380,21 +380,21 @@ function fmt_node_host(node_host) {
 }
 
 function fmt_connection_state(conn) {
-    if (conn.state == undefined) return '';
+    if (conn.state === undefined) return '';
 
     var colour = 'green';
     var text = conn.state;
     var explanation;
 
-    if (conn.last_blocked_by == 'mem' && conn.state == 'blocked') {
+    if (conn.last_blocked_by === 'mem' && conn.state === 'blocked') {
         colour = 'red';
         explanation = 'Memory alarm: Connection blocked.';
     }
-    else if (conn.state == 'blocking') {
+    else if (conn.state === 'blocking') {
         colour = 'yellow';
         explanation = 'Memory alarm: Connection will block on publish.';
     }
-    else if (conn.last_blocked_by == 'flow') {
+    else if (conn.last_blocked_by === 'flow') {
         var age = conn.last_blocked_age.toFixed();
         if (age < 5) {
             colour = 'yellow';
@@ -414,7 +414,7 @@ function fmt_connection_state(conn) {
 
 function fmt_shortened_uri(uri0) {
     var uri = fmt_escape_html(uri0);
-    if (uri.indexOf('?') == -1) {
+    if (uri.indexOf('?') === -1) {
         return uri;
     }
     else {
@@ -424,7 +424,7 @@ function fmt_shortened_uri(uri0) {
 }
 
 function alt_rows(i) {
-    return (i % 2 == 0) ? ' class="alt1"' : ' class="alt2"';
+    return (i % 2 === 0) ? ' class="alt1"' : ' class="alt2"';
 }
 
 function esc(str) {
@@ -440,7 +440,7 @@ function link_channel(name) {
 }
 
 function link_exchange(vhost, name) {
-    var url = esc(vhost) + '/' + (name == '' ? 'amq.default' : esc(name));
+    var url = esc(vhost) + '/' + (name === '' ? 'amq.default' : esc(name));
     return _link_to(fmt_exchange(name), '#/exchanges/' + url)
 }
 
@@ -485,7 +485,7 @@ function message_rates(stats) {
             }
         }
 
-        if (res == "") {
+        if (res === "") {
             res = '<p>Waiting for message rates...</p>';
         }
     }
@@ -524,7 +524,7 @@ function maybe_truncate(items) {
 
 function fmt_sort(display, sort) {
     var prefix = '';
-    if (current_sort == sort) {
+    if (current_sort === sort) {
         prefix = '<span class="arrow">' +
             (current_sort_reverse ? '&#9650; ' : '&#9660; ') +
             '</span>';
@@ -536,11 +536,11 @@ function fmt_permissions(obj, permissions, lookup, show, warning) {
     var res = [];
     for (var i in permissions) {
         var permission = permissions[i];
-        if (permission[lookup] == obj.name) {
+        if (permission[lookup] === obj.name) {
             res.push(permission[show]);
         }
     }
-    return res.length == 0 ? warning : res.join(', ');
+    return res.length === 0 ? warning : res.join(', ');
 }
 
 function properties_size(obj) {

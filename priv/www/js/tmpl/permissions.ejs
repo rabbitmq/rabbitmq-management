@@ -6,7 +6,7 @@
     <table class="list">
       <thead>
         <tr>
-<% if (mode == 'vhost') { %>
+<% if (mode === 'vhost') { %>
           <th>User</th>
 <% } else { %>
           <th>Virtual host</th>
@@ -23,7 +23,7 @@ for (var i = 0; i < permissions.length; i++) {
     var permission = permissions[i];
 %>
            <tr<%= alt_rows(i)%>>
-<% if (mode == 'vhost') { %>
+<% if (mode === 'vhost') { %>
              <td><%= link_user(permission.user) %></td>
 <% } else { %>
              <td><%= link_vhost(permission.vhost) %></td>
@@ -50,7 +50,7 @@ for (var i = 0; i < permissions.length; i++) {
     <form action="#/permissions" method="put">
       <table class="form">
         <tr>
-<% if (mode == 'vhost') { %>
+<% if (mode === 'vhost') { %>
           <th>User</th>
           <td>
             <input type="hidden" name="vhost" value="<%= fmt_string(parent.name) %>"/>

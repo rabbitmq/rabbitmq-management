@@ -19,7 +19,7 @@
       <tr>
         <th>Exclusive owner</th>
         <td>
-          <% if (queue.owner_pid_details == undefined) { %>
+          <% if (queue.owner_pid_details === undefined) { %>
             None
           <% } else { %>
             <%= link_conn(queue.owner_pid_details.name) %>
@@ -61,7 +61,7 @@
           <% for (var i in queue.slave_nodes) {
              var node = queue.slave_nodes[i];
           %>
-            <% if (jQuery.inArray(node, queue.synchronised_slave_nodes) == -1) { %>
+            <% if (jQuery.inArray(node, queue.synchronised_slave_nodes) === -1) { %>
              <%= fmt_string(node) %> <b>(unsynchronised)</b>
             <% } else { %>
              <%= fmt_string(node) %>
@@ -75,7 +75,7 @@
   </div>
 </div>
 
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
 <div class="section-hidden">
 <h2>Message rates</h2>
 <div class="hider updatable">

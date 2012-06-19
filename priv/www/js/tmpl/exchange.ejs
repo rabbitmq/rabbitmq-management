@@ -22,7 +22,7 @@
   </div>
 </div>
 
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
 <div class="section-hidden">
 <h2>Message rates</h2>
 <div class="hider updatable">
@@ -52,7 +52,7 @@
 <div class="section-hidden">
   <h2>Bindings</h2>
   <div class="hider">
-<% if (exchange.name == "") { %>
+<% if (exchange.name === "") { %>
   <h3>Default exchange</h3>
   <p>
     The default exchange is implicitly bound to every queue, with a

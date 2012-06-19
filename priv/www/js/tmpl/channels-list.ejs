@@ -8,19 +8,19 @@
 <table class="list">
  <thead>
   <tr>
-<% if (mode == 'standalone') { %>
+<% if (mode === 'standalone') { %>
    <th colspan="<% if (nodes_interesting) { %>2<% } else { %>1<% } %>"></th>
    <th colspan="<% if (vhosts_interesting) { %>7<% } else { %>6<% } %>">Details</th>
 <% } else { %>
    <th></th>
    <th colspan="5">Details</th>
 <% } %>
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
    <th colspan="<%= ratesWidth %>">Message rates</th>
 <% } %>
   </tr>
   <tr>
-<% if (mode == 'standalone') { %>
+<% if (mode === 'standalone') { %>
     <th><%= fmt_sort('Channel',         'name') %></th>
 <% if (nodes_interesting) { %>
     <th><%= fmt_sort('Node',            'node') %></th>
@@ -34,7 +34,7 @@
     <th><%= fmt_sort('Unacked',         'messages_unacknowledged') %></th>
     <th><%= fmt_sort('Unconfirmed',     'messages_unconfirmed') %></th>
     <th><%= fmt_sort('Status',          'idle_since') %></th>
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
     <th><%= fmt_sort('publish', 'message_stats.publish_details.rate') %></th>
     <th><%= fmt_sort('confirm', 'message_stats.confirm_details.rate') %></th>
     <th>
@@ -59,7 +59,7 @@
     <th>Unacked</th>
     <th>Unconfirmed</th>
     <th>Status</th>
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
     <th>publish</th>
     <th>confirm</th>
     <th>
@@ -88,10 +88,10 @@
     <td>
       <%= link_channel(channel.name) %>
     </td>
-<% if (mode == 'standalone' && nodes_interesting) { %>
+<% if (mode === 'standalone' && nodes_interesting) { %>
     <td><%= fmt_string(channel.node) %></td>
 <% } %>
-<% if (mode == 'standalone') { %>
+<% if (mode === 'standalone') { %>
 <% if (vhosts_interesting) { %>
     <td class="c"><%= fmt_string(channel.vhost) %></td>
 <% } %>
@@ -107,7 +107,7 @@
     <td class="c"><%= channel.messages_unacknowledged %></td>
     <td class="c"><%= channel.messages_unconfirmed %></td>
     <td class="c"><%= fmt_idle(channel) %></td>
-<% if (statistics_level == 'fine') { %>
+<% if (statistics_level === 'fine') { %>
     <td class="r"><%= fmt_rate(channel.message_stats, 'publish') %></td>
     <td class="r"><%= fmt_rate(channel.message_stats, 'confirm') %></td>
     <td class="r"><%= fmt_deliver_rate(channel.message_stats, col_redeliver) %></td>

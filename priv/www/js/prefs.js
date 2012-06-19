@@ -14,7 +14,7 @@ function clear_pref(k) {
 
 function get_pref(k) {
     var r = parse_cookie()[short_key(k)];
-    return r == undefined ? null : r;
+    return r === undefined ? null : r;
 }
 
 function section_pref(template, name) {
@@ -25,7 +25,7 @@ function section_pref(template, name) {
 
 function parse_cookie() {
     var c = get_cookie();
-    var items = c.length == 0 ? [] : c.split('|');
+    var items = c.length === 0 ? [] : c.split('|');
 
     var start = 0;
     var dict = {};
@@ -50,7 +50,7 @@ function get_cookie() {
     var cookies = document.cookie.split(';');
     for (var i in cookies) {
         var kv = jQuery.trim(cookies[i]).split('=');
-        if (kv[0] == 'm') return kv[1];
+        if (kv[0] === 'm') return kv[1];
     }
     return '';
 }
@@ -64,7 +64,7 @@ function short_key(k) {
 
 String.prototype.hashCode = function() {
     var hash = 0;
-    if (this.length == 0) return code;
+    if (this.length === 0) return code;
     for (i = 0; i < this.length; i++) {
         char = this.charCodeAt(i);
         hash = 31*hash+char;

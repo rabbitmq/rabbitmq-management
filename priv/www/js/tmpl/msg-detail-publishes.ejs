@@ -6,11 +6,11 @@
 <% if (object && object.length > 0) { %>
 <table class="list list-with-total">
   <tr>
-<% if (mode == 'channel') { %>
+<% if (mode === 'channel') { %>
     <th>Exchange</th>
-<% } else if (mode == 'exchange-incoming') { %>
+<% } else if (mode === 'exchange-incoming') { %>
     <th>Channel</th>
-<% } else if (mode == 'exchange-outgoing') { %>
+<% } else if (mode === 'exchange-outgoing') { %>
     <th>Queue</th>
 <% } else { %>
     <th>Exchange</th>
@@ -30,11 +30,11 @@
 %>
     <tr<%= alt_rows(i)%>>
 
-<% if (mode == 'channel') { %>
+<% if (mode === 'channel') { %>
       <td><%= link_exchange(pub.exchange.vhost, pub.exchange.name) %></td>
-<% } else if (mode == 'exchange-incoming') { %>
+<% } else if (mode === 'exchange-incoming') { %>
       <td><%= link_channel(pub.channel_details.name) %></td>
-<% } else if (mode == 'exchange-outgoing') { %>
+<% } else if (mode === 'exchange-outgoing') { %>
       <td><%= link_queue(pub.queue_details.vhost, pub.queue_details.name) %></td>
 <% } else { %>
       <td><%= link_exchange(pub.exchange.vhost, pub.exchange.name) %></td>
