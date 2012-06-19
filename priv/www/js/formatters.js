@@ -11,19 +11,29 @@ function fmt_string(str) {
     return fmt_escape_html("" + str);
 }
 
+function fmt_bytes_si(bytes) {
+    return fmt_bytes0(bytes, 1000, '');
+}
+
 function fmt_bytes(bytes) {
+    return fmt_bytes0(bytes, 1024, 'i');
+}
+
+function fmt_bytes0(bytes, divisor, suffix) {
     if (bytes == undefined) return UNKNOWN_REPR;
 
     function f(n, p) {
-        if (n > 1024) return f(n / 1024, p + 1);
+        if (n > divisor) return f(n / divisor, p + 1);
         else return [n, p];
     }
 
     var num_power = f(bytes, 0);
     var num = num_power[0];
     var power = num_power[1];
-    var powers = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    return (power == 0 ? num.toFixed(0) : num.toFixed(1)) + powers[power];
+    var powers = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+    var unit = powers[power];
+    unit += (unit == '' ? '' : suffix) + 'B';
+    return (power == 0 ? num.toFixed(0) : num.toFixed(1)) + unit;
 }
 
 function fmt_boolean(b) {
