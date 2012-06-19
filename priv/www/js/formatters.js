@@ -56,7 +56,7 @@ function fmt_parameters_short(obj) {
     var params = args_to_params(obj);
 
     for (var k in ALL_ARGS) {
-        if (params[k] != undefined) {
+        if (params[k] !== undefined) {
             res += '<acronym title="' + k + ': ' + fmt_string(params[k]) +
                 '">' + ALL_ARGS[k].short + '</acronym> ';
         }
@@ -86,7 +86,7 @@ function args_to_params(obj) {
     if (obj.auto_delete) {
         res['auto-delete'] = true;
     }
-    if (obj.internal != undefined && obj.internal) {
+    if (obj.internal !== undefined && obj.internal) {
         res['internal'] = true;
     }
     return res;
@@ -164,7 +164,7 @@ function fmt_rate_bytes(obj, name) {
 function fmt_rate0(obj, name, fmt, show_total) {
     if (obj === undefined || obj[name] === undefined) return '';
     var res = '';
-    if (obj[name + '_details'] != undefined) {
+    if (obj[name + '_details'] !== undefined) {
         res = fmt(obj[name + '_details'].rate) + '/s';
     }
     if (show_total) {
@@ -357,7 +357,7 @@ function fmt_maybe_wrap(txt, encoding) {
 
     var WRAP = 120;
     var res = '';
-    while (txt != '') {
+    while (txt !== '') {
         var i = txt.indexOf('\n');
         if (i === -1 || i > WRAP) {
             i = Math.min(WRAP, txt.length);
@@ -499,7 +499,7 @@ function message_rates(stats) {
 function queue_length(stats, name, key) {
     var rateMsg = '&nbsp;';
     var detail = stats[key + '_details']
-    if (detail != undefined) {
+    if (detail !== undefined) {
         var rate = detail.rate;
         if (rate > 0)      rateMsg = '+' + fmt_rate_num(rate)  + ' msg/s';
         else if (rate < 0) rateMsg = '-' + fmt_rate_num(-rate) + ' msg/s';

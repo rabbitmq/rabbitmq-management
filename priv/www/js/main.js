@@ -117,7 +117,7 @@ function set_timer_interval(interval) {
 
 function reset_timer() {
     clearInterval(timer);
-    if (timer_interval != null) {
+    if (timer_interval !== null) {
         timer = setInterval('partial_update()', timer_interval);
     }
 }
@@ -153,7 +153,7 @@ function partial_update() {
             replace_content('scratch', html);
             var befores = $('#main .updatable');
             var afters = $('#scratch .updatable');
-            if (befores.length != afters.length) {
+            if (befores.length !== afters.length) {
                 throw("before/after mismatch");
             }
             for (var i = 0; i < befores.length; i++) {
@@ -288,7 +288,7 @@ function apply_state(reqs) {
     for (k in reqs) {
         var req = reqs[k];
         var req2;
-        if (req in VHOST_QUERIES && current_vhost != '') {
+        if (req in VHOST_QUERIES && current_vhost !== '') {
             req2 = req + '/' + esc(current_vhost);
         }
         else {
@@ -296,7 +296,7 @@ function apply_state(reqs) {
         }
 
         var qs = '';
-        if (req in SORT_QUERIES && current_sort != null) {
+        if (req in SORT_QUERIES && current_sort !== null) {
             qs = '?sort=' + current_sort +
                 '&sort_reverse=' + current_sort_reverse;
         }
@@ -479,12 +479,12 @@ function publish_msg(params0) {
     params['payload_encoding'] = 'string';
     params['properties'] = {};
     params['properties']['delivery_mode'] = parseInt(params['delivery_mode']);
-    if (params['headers'] != '')
+    if (params['headers'] !== '')
         params['properties']['headers'] = params['headers'];
     var props = ['content_type', 'content_encoding', 'priority', 'correlation_id', 'reply_to', 'expiration', 'message_id', 'timestamp', 'type', 'user_id', 'app_id', 'cluster_id'];
     for (var i in props) {
         var p = props[i];
-        if (params['props'][p] != '')
+        if (params['props'][p] !== '')
             params['properties'][p] = params['props'][p];
     }
     with_req('POST', path, JSON.stringify(params), function(resp) {
@@ -518,7 +518,7 @@ function with_reqs(reqs, acc, fun) {
                 acc[key] = jQuery.parseJSON(resp.responseText);
                 var remainder = {};
                 for (var k in reqs) {
-                    if (k != key) remainder[k] = reqs[k];
+                    if (k !== key) remainder[k] = reqs[k];
                 }
                 with_reqs(remainder, acc, fun);
             });
@@ -640,7 +640,7 @@ function check_bad_response(req, full_page_404) {
     }
     else if (req.status >= 400 && req.status <= 404) {
         var reason = JSON.parse(req.responseText).reason;
-        if (typeof(reason) != 'string') reason = JSON.stringify(reason);
+        if (typeof(reason) !== 'string') reason = JSON.stringify(reason);
         show_popup('warn', reason);
     }
     else if (req.status === 408) {
@@ -700,12 +700,12 @@ function collapse_multifields(params0) {
             if (params[name] === undefined) {
                 params[name] = {};
             }
-            if (params0[key] != "") {
+            if (params0[key] !== "") {
                 var k = params0[key];
                 var v = params0[name + '_' + id + '_mfvalue'];
                 var t = params0[name + '_' + id + '_mftype'];
                 if (t === 'boolean') {
-                    if (v != 'true' && v != 'false')
+                    if (v !== 'true' && v !== 'false')
                         throw(k + ' must be "true" or "false"; got ' + v);
                     params[name][k] = (v === 'true');
                 }
@@ -727,7 +727,7 @@ function collapse_multifields(params0) {
 function add_known_arguments(params) {
     for (var k in KNOWN_ARGS) {
         var v = params[k];
-        if (v != undefined && v != '') {
+        if (v !== undefined && v !== '') {
             var type = KNOWN_ARGS[k].type;
             if (type === 'int') {
                 v = parseInt(v);
@@ -747,11 +747,11 @@ function add_known_arguments(params) {
 }
 
 function check_password(params) {
-    if (params['password'] != undefined) {
+    if (params['password'] !== undefined) {
         if (params['password'] === '') {
             throw("Please specify a password.");
         }
-        if (params['password'] != params['password_confirm']) {
+        if (params['password'] !== params['password_confirm']) {
             throw("Passwords do not match.");
         }
         delete params['password_confirm'];
