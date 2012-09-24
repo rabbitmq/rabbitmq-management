@@ -96,7 +96,9 @@ start_link() ->
     %% name if it existed before. We therefore rely on
     %% mirrored_supervisor to maintain the uniqueness of this process.
     case gen_server:start_link(?MODULE, [], []) of
-        {ok, Pid} -> global:re_register_name(?MODULE, Pid);
+        {ok, Pid} -> Reg = global:re_register_name(?MODULE, Pid),
+                     rabbit:force_event_refresh(),
+                     Reg;
         Else      -> Else
     end.
 
@@ -209,7 +211,6 @@ if_unknown(Val,    _Def) -> Val.
 %%----------------------------------------------------------------------------
 
 init([]) ->
-    rabbit:force_event_refresh(),
     {ok, Interval} = application:get_env(rabbit, collect_statistics_interval),
     rabbit_log:info("Statistics database started.~n"),
     {ok, #state{interval = Interval,
