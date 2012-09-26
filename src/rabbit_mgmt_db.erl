@@ -96,9 +96,9 @@ start_link() ->
     %% name if it existed before. We therefore rely on
     %% mirrored_supervisor to maintain the uniqueness of this process.
     case gen_server:start_link(?MODULE, [], []) of
-        {ok, Pid} -> Reg = global:re_register_name(?MODULE, Pid),
+        {ok, Pid} -> yes = global:re_register_name(?MODULE, Pid),
                      rabbit:force_event_refresh(),
-                     Reg;
+                     {ok, Pid};
         Else      -> Else
     end.
 
