@@ -310,32 +310,45 @@ def make_configuration():
     make_parser()
     (options, args) = parser.parse_args()
     setattr(options, "declare_vhost", None)
+    using_default_config = False
+    using_default_node = False
     if options.version:
         print_version()
-    if options.node is None and options.config:
-        options.node = "default"
-    elif options.node and options.config is None:
+    if options.config is None:
         home = os.getenv('USERPROFILE') or os.getenv('HOME')
-        setattr(options, "config", home + os.sep + ".rabbitmqadmin.conf")
-    if options.node:
+        config_file = home + os.sep + ".rabbitmqadmin.conf"
+        if os.path.isfile(config_file):
+            setattr(options, "config", config_file)
+            using_default_config = True
+
+    new_opts = default_options.copy()
+    if options.node is None and options.config:
+        new_opts["node"] = "default"
+        using_default_node = True
+    else:
+        new_opts["node"] = options.node
+    for (key, val) in default_options.items():
+        new_opts[key] = val
+    if new_opts["node"]:
         config = ConfigParser()
+        new_conf = False
         try:
             config.read(options.config)
-            new_conf = dict(config.items(options.node))
+            new_conf = dict(config.items(new_opts["node"]))
         except ConfigParserError, error:
-            assert_usage(False, ("Could not read section '%s' in config file"  +
+            print(using_default_config, using_default_node)
+            if using_default_config and using_default_node:
+                pass
+            else:
+                assert_usage(False, ("Could not read section '%s' in config file"  +
                          " '%s':\n   %s") %
-                         (options.node, options.config, error))
-        new_opts = default_options.copy()
-        for (key, val) in new_conf.items():
-            new_opts[key] = val
-        for (key, val) in new_opts.items():
-            if getattr(options, key) is None:
-                setattr(options, key, val)
-    else:
-        for (key, val) in default_options.items():
-            if getattr(options, key) is None:
-                setattr(options, key, val)
+                         (new_opts["node"], options.config, error))
+        if new_conf:
+            for (key, val) in new_conf.items():
+                new_opts[key] = val
+    for (key, val) in new_opts.items():
+        if getattr(options, key) is None:
+            setattr(options, key, val)
     return (options, args)
 
 def assert_usage(expr, error):
