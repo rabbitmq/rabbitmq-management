@@ -27,12 +27,10 @@ function try_uri_login() {
     if (hash['username'] !== undefined &&
         hash['password'] !== undefined) {
         userpass = '' + hash['username'] + ':' + hash['password'];
+        set_auth_cookie(decodeURIComponent(userpass));
         location = this.location.href;
         location = location.substr(0, location.length - this.location.hash.length);
         this.location.replace(location);
-    }
-    if (userpass !== undefined) {
-        set_auth_cookie(decodeURIComponent(userpass));
     }
 }
 
