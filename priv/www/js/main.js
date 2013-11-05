@@ -1,6 +1,5 @@
 $(document).ready(function() {
     replace_content('outer', format('login', {}));
-    try_uri_login();
     start_app_login();
 });
 
@@ -17,23 +16,6 @@ function dispatcher() {
     }
 }
 
-function try_uri_login() {
-    var hash = {}, userpass, location;
-    this.location.hash.substr(1).split("/").forEach(function (pair) {
-        if (pair === "") return;
-        var parts = pair.split("=");
-        hash[parts[0]] = parts[1];
-    });
-    if (hash['username'] !== undefined &&
-        hash['password'] !== undefined) {
-        userpass = '' + hash['username'] + ':' + hash['password'];
-        set_auth_cookie(decodeURIComponent(userpass));
-        location = this.location.href;
-        location = location.substr(0, location.length - this.location.hash.length);
-        this.location.replace(location);
-    }
-}
-
 function set_auth_cookie(userinfo) {
     var b64 = b64_encode_utf8(userinfo);
     document.cookie = 'auth=' + encodeURIComponent(b64);
@@ -46,6 +28,14 @@ function start_app_login() {
             password = this.params['password'];
             set_auth_cookie(username + ':' + password);
             check_login();
+        });
+        this.get('#/autologin/:username/:password', function () {
+            var userpass = '' + this.params['username'] + ':' + this.params['password'];
+            set_auth_cookie(decodeURIComponent(userpass));
+            check_login();
+            var location = window.location.href;
+            location = location.substr(0, location.length - window.location.hash.length);
+            window.location.replace(location);
         });
     });
     app.run();
