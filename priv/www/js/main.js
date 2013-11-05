@@ -18,15 +18,21 @@ function dispatcher() {
 }
 
 function try_uri_login() {
-    var location = this.location.href;
-    location = location.substr(3 + location.indexOf("://"));
-    var authority = location.substr(0, location.indexOf("/"));
-    if (authority.indexOf("@") !== -1) {
-        var userinfo = authority.substr(0, authority.indexOf("@"));
-        if (userinfo.split(":").length === 2) {
-            uri_auth_used = true;
-            set_auth_cookie(decodeURIComponent(userinfo));
-        }
+    var hash = {}, userpass, location;
+    this.location.hash.substr(1).split("/").forEach(function (pair) {
+        if (pair === "") return;
+        var parts = pair.split("=");
+        hash[parts[0]] = parts[1];
+    });
+    if (hash['username'] !== undefined &&
+        hash['password'] !== undefined) {
+        userpass = '' + hash['username'] + ':' + hash['password'];
+        location = this.location.href;
+        location = location.substr(0, location.length - this.location.hash.length);
+        this.location.replace(location);
+    }
+    if (userpass !== undefined) {
+        set_auth_cookie(decodeURIComponent(userpass));
     }
 }
 
