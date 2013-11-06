@@ -13,14 +13,7 @@ dispatcher_add(function(sammy) {
             }
             render(reqs, 'overview', '#/');
         });
-    sammy.get('#/autologin/:username/:password', function () {
-        var userpass = '' + this.params['username'] + ':' + this.params['password'];
-        set_auth_cookie(decodeURIComponent(userpass));
-        check_login();
-        var location = window.location.href;
-        location = location.substr(0, location.length - window.location.hash.length);
-        window.location.replace(location);
-    });
+    sammy.get('#/login/:username/:password', login_route);
     sammy.get('#/nodes/:name', function() {
             var name = esc(this.params['name']);
             render({'node': '/nodes/' + name},

@@ -21,6 +21,18 @@ function set_auth_cookie(userinfo) {
     document.cookie = 'auth=' + encodeURIComponent(b64);
 }
 
+function login_route () {
+    var userpass = '' + this.params['username'] + ':' + this.params['password'],
+        location = window.location.href,
+        hash = window.location.hash;
+    set_auth_cookie(decodeURIComponent(userpass));
+    location = location.substr(0, location.length - hash.length);
+    window.location.replace(location);
+    // because we change url, we don't need to hit check_login as
+    // we'll end up doing that at the bottom of start_app_login after
+    // we've changed url.
+}
+
 function start_app_login() {
     app = new Sammy.Application(function () {
         this.put('#/login', function() {
@@ -29,14 +41,7 @@ function start_app_login() {
             set_auth_cookie(username + ':' + password);
             check_login();
         });
-        this.get('#/autologin/:username/:password', function () {
-            var userpass = '' + this.params['username'] + ':' + this.params['password'];
-            set_auth_cookie(decodeURIComponent(userpass));
-            check_login();
-            var location = window.location.href;
-            location = location.substr(0, location.length - window.location.hash.length);
-            window.location.replace(location);
-        });
+        this.get('#/login/:username/:password', login_route)
     });
     app.run();
     if (get_cookie('auth') != '') {
