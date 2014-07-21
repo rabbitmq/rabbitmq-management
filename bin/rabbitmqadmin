@@ -119,6 +119,8 @@ PURGABLE = {
 EXTRA_VERBS = {
     'publish': {'mandatory': ['routing_key'],
                 'optional':  {'payload': None,
+                              'delivery_mode': '1',
+                              'headers': None,
                               'exchange': 'amq.default',
                               'payload_encoding': 'string'},
                 'uri':       '/exchanges/{vhost}/{exchange}/publish'},
@@ -479,6 +481,20 @@ class Management:
     def invoke_publish(self):
         (uri, upload) = self.parse_args(self.args, EXTRA_VERBS['publish'])
         upload['properties'] = {} # TODO do we care here?
+        try:
+            delivery_mode = int(upload.pop('delivery_mode'))
+            if delivery_mode not in [1, 2]:
+                raise ValueError('allowed value is 1 or 2')
+            upload['properties']['delivery_mode'] = delivery_mode
+        except ValueError as e:
+            die("Invalid delivery_mode: %s\n" % format(e))
+        if 'headers' in upload:
+            headers = upload.pop('headers')
+            try:
+                headers = json.loads(headers)
+                upload['properties']['headers'] = headers
+            except Exception as e:
+                die("Invalid headers: %s\n" % format(e))
         if not 'payload' in upload:
             data = sys.stdin.read()
             upload['payload'] = base64.b64encode(data)
