@@ -200,7 +200,7 @@ function fmt_num_thousands(num) {
 }
 
 function fmt_percent(num) {
-    if (num === '') {
+    if (num === '' || num === null || num === undefined) {
         return 'N/A';
     } else {
         return Math.round(num * 100) + '%';
