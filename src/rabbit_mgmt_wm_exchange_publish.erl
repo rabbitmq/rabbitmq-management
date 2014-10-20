@@ -17,7 +17,7 @@
 -module(rabbit_mgmt_wm_exchange_publish).
 
 -export([init/1, resource_exists/2, post_is_create/2, is_authorized/2,
-         allowed_methods/2, process_post/2]).
+         allowed_methods/2, process_post/2, publish_msg/5]).
 
 -include("rabbit_mgmt.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -50,36 +50,51 @@ do_it(ReqData, Context) ->
               rabbit_mgmt_util:with_channel(
                 VHost, ReqData, Context,
                 fun (Ch) ->
-                        MRef = erlang:monitor(process, Ch),
-                        amqp_channel:register_confirm_handler(Ch, self()),
-                        amqp_channel:register_return_handler(Ch, self()),
-                        amqp_channel:call(Ch, #'confirm.select'{}),
-                        Props = rabbit_mgmt_format:to_basic_properties(Props0),
-                        Payload = decode(Payload0, Enc),
-                        amqp_channel:cast(Ch, #'basic.publish'{
-                                            exchange    = X,
-                                            routing_key = RoutingKey,
-                                            mandatory   = true},
-                                          #amqp_msg{props   = Props,
-                                                    payload = Payload}),
-                        receive
-                            {#'basic.return'{}, _} ->
-                                receive
-                                    #'basic.ack'{} -> ok
-                                end,
-                                good(MRef, false, ReqData, Context);
-                            #'basic.ack'{} ->
-                                good(MRef, true, ReqData, Context);
-                            {'DOWN', _, _, _, Err} ->
-                                bad(Err, ReqData, Context)
-                        end
+                  Props = rabbit_mgmt_format:to_basic_properties(Props0),
+                  Payload = decode(Payload0, Enc),
+                  case publish_msg(Ch, X, RoutingKey, Props, Payload) of
+                    {good, false} ->
+                      good(false, ReqData, Context);
+                    {good, true} ->
+                      good(true, ReqData, Context);
+                    {down, Err} ->
+                      bad(Err, ReqData, Context)
+                  end
                 end);
           ([_RoutingKey, _Props, _Payload, _Enc], _) ->
               throw({error, payload_not_string})
       end).
 
-good(MRef, Routed, ReqData, Context) ->
-    erlang:demonitor(MRef),
+publish_msg(Ch, X, RoutingKey, Props, Payload) ->
+  MRef = erlang:monitor(process, Ch),
+  amqp_channel:register_confirm_handler(Ch, self()),
+  amqp_channel:register_return_handler(Ch, self()),
+  amqp_channel:call(Ch, #'confirm.select'{}),
+  amqp_channel:cast(Ch, #'basic.publish'{
+    exchange    = X,
+    routing_key = RoutingKey,
+    mandatory   = true},
+    #amqp_msg{props   = Props,
+      payload = Payload}),
+    receive
+      {#'basic.return'{}, _} ->
+        receive
+          #'basic.ack'{} -> ok
+        end,
+
+        demonitor(MRef),
+        {good, false};
+      #'basic.ack'{} ->
+        demonitor(MRef),
+        {good, true};
+      {'DOWN', _, _, _, Err} ->
+        {down, Err}
+    end.
+
+demonitor(MRef) ->
+  erlang:demonitor(MRef).
+
+good(Routed, ReqData, Context) ->
     rabbit_mgmt_util:reply([{routed, Routed}], ReqData, Context).
 
 bad({shutdown, {connection_closing,

@@ -806,6 +806,13 @@ function get_msgs(params) {
         });
 }
 
+function move_msgs(params) {
+    var path = fill_path_template('/queues/:vhost/:queue/:destinationQueue/move', params);
+    with_req('POST', path, JSON.stringify(params), function(resp) {
+        show_popup('info', 'Messages moved: ' + jQuery.parseJSON(resp.responseText).messages);
+    });
+}
+
 function with_reqs(reqs, acc, fun) {
     if (keys(reqs).length > 0) {
         var key = keys(reqs)[0];

@@ -117,6 +117,10 @@ dispatcher_add(function(sammy) {
             get_msgs(this.params);
             return false;
         });
+    sammy.post('#/queues/move', function() {
+            move_msgs(this.params);
+            return false;
+        });
     sammy.post('#/queues/actions', function() {
             if (sync_post(this, '/queues/:vhost/:name/actions'))
                 // We can't refresh fast enough, it's racy. So grey

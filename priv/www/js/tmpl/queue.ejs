@@ -246,6 +246,29 @@
 </div>
 
 <div class="section-hidden">
+  <h2>Move messages</h2>
+  <div class="hider">
+    <p>
+      Messages will be taken from the current queue and placed in the destination queue.
+    </p>
+    <form action="#/queues/move" method="post">
+      <input type="hidden" name="vhost" value="<%= fmt_string(queue.vhost) %>"/>
+      <input type="hidden" name="queue" value="<%= fmt_string(queue.name) %>"/>
+      <table class="form">
+        <tr>
+          <th><label>Destination Queue:</label></th>
+          <td>
+            <input type="text" name="destinationQueue" />
+            <span class="help" id="message-move"></span>
+          </td>
+        </tr>
+      </table>
+      <input type="submit" value="Move Message(s)" />
+    </form>
+  </div>
+</div>
+
+<div class="section-hidden">
   <h2>Delete / purge</h2>
   <div class="hider">
     <form action="#/queues" method="delete" class="confirm inline-form">
