@@ -86,11 +86,7 @@ dispatcher_add(function(sammy) {
             return false;
         });
 
-    path('#/queues', {'queues':  {path:    '/queues',
-                                  options: {sort:true,vhost:true}},
-                      'vhosts': '/vhosts'}, 'queues');
-
-    path('#/queues/pagination', {'queues':  {path:    '/queues',
+    path('#/queues', {'queues':  {path:    '/queues/pagination?page=1',
                                   options: {sort:true,vhost:true,pagination:true}},
                       'vhosts': '/vhosts'}, 'queues');
 
