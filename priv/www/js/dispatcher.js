@@ -89,6 +89,12 @@ dispatcher_add(function(sammy) {
     path('#/queues', {'queues':  {path:    '/queues',
                                   options: {sort:true,vhost:true}},
                       'vhosts': '/vhosts'}, 'queues');
+
+    path('#/queues/pagination', {'queues':  {path:    '/queues',
+                                  options: {sort:true,vhost:true,pagination:true}},
+                      'vhosts': '/vhosts'}, 'queues');
+
+
     sammy.get('#/queues/:vhost/:name', function() {
             var path = '/queues/' + esc(this.params['vhost']) + '/' + esc(this.params['name']);
             render({'queue': {path:    path,
