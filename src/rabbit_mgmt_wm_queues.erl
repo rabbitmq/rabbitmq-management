@@ -37,7 +37,17 @@ resource_exists(ReqData, Context) ->
      end, ReqData, Context}.
 
 to_json(ReqData, Context) ->
-    rabbit_mgmt_util:reply_list(augmented(ReqData, Context), ReqData, Context).
+    rabbit_log:info("ReqData ~p",[ReqData]),
+    R = case rabbit_mgmt_util:int("page", ReqData) of
+    	    undefined -> rabbit_mgmt_util:reply_list(augmented(ReqData, Context), ReqData, Context);
+    	    N ->
+            rabbit_mgmt_util:reply_list(augmented(ReqData, Context), ReqData,
+              Context,N)
+%%             rabbit_mgmt_util:reply_list(augmented(ReqData, Context), N, ["vhost", "name"], ReqData, Context)
+
+        end,
+    R.
+
 
 is_authorized(ReqData, Context) ->
     rabbit_mgmt_util:is_authorized_vhost(ReqData, Context).
@@ -45,6 +55,7 @@ is_authorized(ReqData, Context) ->
 %%--------------------------------------------------------------------
 
 augmented(ReqData, Context) ->
+    rabbit_log:info("augmented_1, ~p \n", [ReqData]),
     rabbit_mgmt_format:strip_pids(
       rabbit_mgmt_db:augment_queues(
         rabbit_mgmt_util:filter_vhost(basic(ReqData), ReqData, Context),

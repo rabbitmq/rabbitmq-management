@@ -2,9 +2,21 @@
 <div class="section">
   <h2>All queues</h2>
   <div class="hider">
-<%= filter_ui(queues) %>
+
+    <div id="page-form">
+    <label for="queue-page">Page </label>
+    <select id="queue-page">
+    <% for (var i = 1; i <= (queues.all/queues.filtered); i++) { if (i == queues.from) {%>
+								 <option selected="selected" value="<%= i %>"><%= i %></option>
+								 <% } else { %>
+%>
+								 <option value="<%= i %>"><%= i %></option>
+								 <% } }%>
+    </select>
+    </div>
+<%= filter_ui(queues.elements) %>
   <div class="updatable">
-<% if (queues.length > 0) { %>
+<% if (queues.elements.length > 0) { %>
 <table class="list">
  <thead>
   <tr>
@@ -90,8 +102,8 @@
  </thead>
  <tbody>
 <%
-  for (var i = 0; i < queues.length; i++) {
-    var queue = queues[i];
+  for (var i = 0; i < queues.elements.length; i++) {
+    var queue = queues.elements[i];
 %>
   <tr<%= alt_rows(i, queue.arguments) %>>
 <% if (vhosts_interesting) { %>

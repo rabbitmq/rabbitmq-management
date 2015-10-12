@@ -556,6 +556,12 @@ function postprocess() {
     if (! user_administrator) {
         $('.administrator-only').remove();
     }
+    $('#queue-page').change(function() {
+	var page = $(this).val();
+	render({'queues':  {path:    '/queues/pagination?page=' + page,
+                            options: {sort:true,vhost:true,pagination:true}},
+                'vhosts': '/vhosts'}, 'queues', '#/queues');
+    });
     update_multifields();
 }
 

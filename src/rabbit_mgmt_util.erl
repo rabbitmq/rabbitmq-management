@@ -34,7 +34,7 @@
 -export([reply_list/3, reply_list/4, sort_list/2, destination_type/1]).
 -export([post_respond/1, columns/1, is_monitor/1]).
 -export([list_visible_vhosts/1, b64decode_or_throw/1, no_range/0, range/1,
-         range_ceil/1, floor/2, ceil/2]).
+         range_ceil/1, floor/2, ceil/2,int/2]).
 
 -import(rabbit_misc, [pget/2, pget/3]).
 
@@ -195,20 +195,29 @@ reply0(Facts, ReqData, Context) ->
             internal_server_error(Error, Reason, ReqData1, Context)
     end.
 
+reply_list(Facts, ReqData, Context,Page) ->
+  reply_list(Facts, ["vhost", "name"], ReqData, Context,Page).
+
 reply_list(Facts, ReqData, Context) ->
-    reply_list(Facts, ["vhost", "name"], ReqData, Context).
+    reply_list(Facts, ["vhost", "name"], ReqData, Context,undefined).
 
-reply_list(Facts, DefaultSorts, ReqData, Context) ->
-    reply(sort_list(
-            extract_columns_list(Facts, ReqData),
-            DefaultSorts,
-            wrq:get_qs_value("sort", ReqData),
-            wrq:get_qs_value("sort_reverse", ReqData)),
-          ReqData, Context).
+reply_list(Facts, DefaultSorts, ReqData, Context,Page) ->
+    SortList =
+      sort_list(
+          extract_columns_list(Facts, ReqData),
+          DefaultSorts,
+          wrq:get_qs_value("sort", ReqData),
+          wrq:get_qs_value("sort_reverse", ReqData), Page),
 
-sort_list(Facts, Sorts) -> sort_list(Facts, Sorts, undefined, false).
+          %%  `case` added por pagination.
+    case SortList of
+        {bad_request, Reason} -> bad_request(Reason, ReqData, Context);
+        _ -> reply(SortList, ReqData, Context)
+    end.
 
-sort_list(Facts, DefaultSorts, Sort, Reverse) ->
+sort_list(Facts, Sorts) -> sort_list(Facts, Sorts, undefined, false, undefined).
+
+sort_list(Facts, DefaultSorts, Sort, Reverse,From) ->
     SortList = case Sort of
                undefined -> DefaultSorts;
                Extra     -> [Extra | DefaultSorts]
@@ -216,10 +225,53 @@ sort_list(Facts, DefaultSorts, Sort, Reverse) ->
     %% lists:sort/2 is much more expensive than lists:sort/1
     Sorted = [V || {_K, V} <- lists:sort(
                                 [{sort_key(F, SortList), F} || F <- Facts])],
-    case Reverse of
-        "true" -> lists:reverse(Sorted);
-        _      -> Sorted
-    end.
+
+    RangeList = applyRangeFilter(Sorted, From, 100),
+    case RangeList of
+      {bad_request, Reason} -> {bad_request, Reason};
+      _ ->  %  then  apply the range filter
+      case Reverse of
+        "true" ->
+          filterResponse(lists:reverse(RangeList),
+            From, 100,
+            length(Sorted), length(RangeList));
+        _ ->
+          filterResponse(RangeList,
+            From, 100,
+            length(Sorted), length(RangeList))
+      end
+  end.
+
+%% filters functions
+
+applyRangeFilter(List, From, Page_Size) when is_integer(From) and
+    (From > 0) and is_integer(Page_Size) ->
+    Offset = (From - 1) * Page_Size + 1,
+
+    try
+        lists:sublist(List, Offset, Page_Size)
+    catch
+        error:function_clause ->
+        {bad_request, list_to_binary([<<"page-out-of-index, from: ">>,
+          integer_to_binary(Offset), <<" page size:">>, integer_to_binary(Page_Size),
+          <<", list length: ">>, integer_to_binary(length(List))])}
+    end;
+%% Here it is backward with the other API(s), that don't filter the data
+applyRangeFilter(List, _From, _Page_Size) ->
+    List.
+
+filterResponse(List, From, Page_Size, All, Filtered) when
+    is_integer(From) and is_integer(Page_Size)  ->
+    [{all, All},
+     {filtered, Filtered},
+     {from, From},
+     {page_size, Page_Size},
+     {elements, List}
+   ];
+%% Here it is backward with the other API(s), that don't filter the data
+filterResponse(List, _From, _Page_Size, _All, _Filtered) ->
+  List.
+%% end filters functions
 
 sort_key(_Item, []) ->
     [];
