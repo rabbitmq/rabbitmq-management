@@ -1,70 +1,93 @@
-%%   The contents of this file are subject to the Mozilla Public License
-%%   Version 1.1 (the "License"); you may not use this file except in
-%%   compliance with the License. You may obtain a copy of the License at
-%%   http://www.mozilla.org/MPL/
+%% The contents of this file are subject to the Mozilla Public License
+%% Version 1.1 (the "License"); you may not use this file except in
+%% compliance with the License. You may obtain a copy of the License at
+%% http://www.mozilla.org/MPL/
 %%
-%%   Software distributed under the License is distributed on an "AS IS"
-%%   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-%%   License for the specific language governing rights and limitations
-%%   under the License.
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+%% License for the specific language governing rights and limitations
+%% under the License.
 %%
-%%   The Original Code is RabbitMQ Management Console.
+%% The Original Code is RabbitMQ.
 %%
-%%   The Initial Developer of the Original Code is GoPivotal, Inc.
-%%   Copyright (c) 2007-2016 Pivotal Software, Inc.  All rights reserved.
+%% The Initial Developer of the Original Code is GoPivotal, Inc.
+%% Copyright (c) 2016 Pivotal Software, Inc.  All rights reserved.
 %%
 
--module(rabbit_mgmt_test_http).
+-module(rabbit_mgmt_http_SUITE).
 
--include("rabbit_mgmt_test.hrl").
-
--export([http_get/1, http_put/3, http_delete/2]).
+-include_lib("common_test/include/ct.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -import(rabbit_mgmt_test_util, [assert_list/2, assert_item/2, test_item/2,
                                 assert_keys/2, assert_no_keys/2]).
+
 -import(rabbit_misc, [pget/2]).
 
-cors_test() ->
-    %% With CORS disabled. No header should be received.
-    {ok, {_, HdNoCORS, _}} = req(get, "/overview", [auth_header("guest", "guest")]),
-    false = lists:keymember("access-control-allow-origin", 1, HdNoCORS),
-    %% The Vary header should include "Origin" regardless of CORS configuration.
-    {_, "Accept-Encoding, origin"} = lists:keyfind("vary", 1, HdNoCORS),
-    %% Enable CORS.
-    application:set_env(rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]),
-    %% We should only receive allow-origin and allow-credentials from GET.
-    {ok, {_, HdGetCORS, _}} = req(get, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
-    true = lists:keymember("access-control-allow-origin", 1, HdGetCORS),
-    true = lists:keymember("access-control-allow-credentials", 1, HdGetCORS),
-    false = lists:keymember("access-control-expose-headers", 1, HdGetCORS),
-    false = lists:keymember("access-control-max-age", 1, HdGetCORS),
-    false = lists:keymember("access-control-allow-methods", 1, HdGetCORS),
-    false = lists:keymember("access-control-allow-headers", 1, HdGetCORS),
-    %% We should receive allow-origin, allow-credentials and allow-methods from OPTIONS.
-    {ok, {_, HdOptionsCORS, _}} = req(options, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
-    true = lists:keymember("access-control-allow-origin", 1, HdOptionsCORS),
-    true = lists:keymember("access-control-allow-credentials", 1, HdOptionsCORS),
-    false = lists:keymember("access-control-expose-headers", 1, HdOptionsCORS),
-    true = lists:keymember("access-control-max-age", 1, HdOptionsCORS),
-    true = lists:keymember("access-control-allow-methods", 1, HdOptionsCORS),
-    false = lists:keymember("access-control-allow-headers", 1, HdOptionsCORS),
-    %% We should receive allow-headers when request-headers is sent.
-    {ok, {_, HdAllowHeadersCORS, _}} = req(options, "/overview",
-        [{"origin", "http://rabbitmq.com"},
-         auth_header("guest", "guest"),
-         {"access-control-request-headers", "x-piggy-bank"}]),
-    {_, "x-piggy-bank"} = lists:keyfind("access-control-allow-headers", 1, HdAllowHeadersCORS),
-    %% Disable preflight request caching.
-    application:set_env(rabbitmq_management, cors_max_age, undefined),
-    %% We shouldn't receive max-age anymore.
-    {ok, {_, HdNoMaxAgeCORS, _}} = req(options, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
-    false = lists:keymember("access-control-max-age", 1, HdNoMaxAgeCORS),
-    %% Disable CORS again.
-    application:set_env(rabbitmq_management, cors_allow_origins, []),
-    ok.
+-define(OK, 200).
+-define(CREATED, 201).
+-define(NO_CONTENT, 204).
+-define(BAD_REQUEST, 400).
+-define(NOT_AUTHORISED, 401).
+%% -define(NOT_FOUND, 404). This is already defined by amqp_client.hrl
+-define(PREFIX, "http://localhost:15672/api").
+%% httpc seems to get racy when using HTTP 1.1
+-define(HTTPC_OPTS, [{version, "HTTP/1.0"}]).
+
+-compile(export_all).
+
+all() ->
+    [
+      {group, non_parallel_tests}
+    ].
+
+groups() ->
+    [
+      {non_parallel_tests, [], [
+                                overview_test
+        ]}
+    ].
+
+%% -------------------------------------------------------------------
+%% Testsuite setup/teardown.
+%% -------------------------------------------------------------------
+
+init_per_suite(Config) ->
+    inets:start(),
+    rabbit_ct_helpers:log_environment(),
+    rabbit_ct_helpers:run_setup_steps(Config,
+                                      rabbit_ct_broker_helpers:setup_steps()).
+
+end_per_suite(Config) ->
+    rabbit_ct_helpers:run_teardown_steps(Config,
+                                         rabbit_ct_broker_helpers:teardown_steps()).
+
+init_per_group(_, Config) ->
+    Config.
+
+end_per_group(_, Config) ->
+    Config.
+
+init_per_testcase(Testcase, Config) ->
+    rabbit_ct_helpers:testcase_started(Config, Testcase),
+    Config1 = rabbit_ct_helpers:set_config(Config, [
+        {rmq_nodename_suffix, Testcase}
+      ]),
+    rabbit_ct_helpers:run_steps(Config1,
+      rabbit_ct_broker_helpers:setup_steps() ++
+      rabbit_ct_client_helpers:setup_steps()).
+
+end_per_testcase(Testcase, Config) ->
+    Config1 = rabbit_ct_helpers:run_steps(Config,
+      rabbit_ct_client_helpers:teardown_steps() ++
+      rabbit_ct_broker_helpers:teardown_steps()),
+    rabbit_ct_helpers:testcase_finished(Config1, Testcase).
+
+%% -------------------------------------------------------------------
+%% Testcases.
+%% -------------------------------------------------------------------
+
 
 overview_test() ->
     %% Rather crude, but this req doesn't say much and at least this means it
@@ -74,9 +97,8 @@ overview_test() ->
                                {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_get("/overview", "myuser", "myuser", ?OK),
     http_delete("/users/myuser", ?NO_CONTENT),
-    %% TODO uncomment when priv works in test
-    %%http_get(""),
-    ok.
+
+    passed.
 
 cluster_name_test() ->
     http_put("/users/myuser", [{password, <<"myuser">>},
@@ -85,7 +107,7 @@ cluster_name_test() ->
     http_put("/cluster-name", [{name, "foo"}], ?NO_CONTENT),
     [{name, <<"foo">>}] = http_get("/cluster-name", "myuser", "myuser", ?OK),
     http_delete("/users/myuser", ?NO_CONTENT),
-    ok.
+    passed.
 
 nodes_test() ->
     http_put("/users/user", [{password, <<"user">>},
@@ -103,7 +125,7 @@ nodes_test() ->
     http_get(Path, "user", "user", ?NOT_AUTHORISED),
     http_delete("/users/user", ?NO_CONTENT),
     http_delete("/users/monitor", ?NO_CONTENT),
-    ok.
+    passed.
 
 memory_test() ->
     [Node] = http_get("/nodes"),
@@ -124,7 +146,7 @@ memory_test() ->
     assert_item([{total, 100}], Breakdown),
     assert_percentage(Breakdown),
     http_get("/nodes/nonode/memory/relative", ?NOT_FOUND),
-    ok.
+    passed.
 
 ets_tables_memory_test() ->
     [Node] = http_get("/nodes"),
@@ -161,7 +183,7 @@ ets_tables_memory_test() ->
 
     ResultUnknownFilter = http_get(Path ++ "/blahblah", ?OK),
     [{ets_tables_memory, <<"no_tables">>}] = ResultUnknownFilter,
-    ok.
+    passed.
 
 assert_percentage(Breakdown) ->
     Total = lists:sum([P || {K, P} <- Breakdown, K =/= total]),
@@ -183,7 +205,7 @@ auth_test() ->
     test_auth(?NOT_AUTHORISED, [auth_header("guest", "gust")]),
     test_auth(?OK, [auth_header("guest", "guest")]),
     http_delete("/users/user", ?NO_CONTENT),
-    ok.
+    passed.
 
 %% This test is rather over-verbose as we're trying to test understanding of
 %% Webmachine
@@ -253,7 +275,7 @@ users_test() ->
     http_delete("/users/myuser", ?NO_CONTENT),
     test_auth(?NOT_AUTHORISED, [auth_header("myuser", "password")]),
     http_get("/users/myuser", ?NOT_FOUND),
-    ok.
+    passed.
 
 users_legacy_administrator_test() ->
     http_put("/users/myuser1", [{administrator, <<"true">>}], [?CREATED, ?NO_CONTENT]),
@@ -264,7 +286,7 @@ users_legacy_administrator_test() ->
                 http_get("/users/myuser2")),
     http_delete("/users/myuser1", ?NO_CONTENT),
     http_delete("/users/myuser2", ?NO_CONTENT),
-    ok.
+    passed.
 
 permissions_validation_test() ->
     Good = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
@@ -274,7 +296,7 @@ permissions_validation_test() ->
              [{configure, <<"[">>}, {write, <<".*">>}, {read, <<".*">>}],
              ?BAD_REQUEST),
     http_put("/permissions/%2f/guest", Good, ?NO_CONTENT),
-    ok.
+    passed.
 
 permissions_list_test() ->
     [[{user,<<"guest">>},
@@ -307,7 +329,7 @@ permissions_list_test() ->
     http_delete("/users/myuser2", ?NO_CONTENT),
     http_delete("/vhosts/myvhost1", ?NO_CONTENT),
     http_delete("/vhosts/myvhost2", ?NO_CONTENT),
-    ok.
+    passed.
 
 permissions_test() ->
     http_put("/users/myuser", [{password, <<"myuser">>}, {tags, <<"administrator">>}],
@@ -336,7 +358,7 @@ permissions_test() ->
 
     http_delete("/users/myuser", ?NO_CONTENT),
     http_delete("/vhosts/myvhost", ?NO_CONTENT),
-    ok.
+    passed.
 
 connections_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -400,7 +422,7 @@ exchanges_test() ->
 
     http_delete("/vhosts/myvhost", ?NO_CONTENT),
     http_get("/exchanges/badvhost", ?NOT_FOUND),
-    ok.
+    passed.
 
 queues_test() ->
     Good = [{durable, true}],
@@ -444,7 +466,7 @@ queues_test() ->
     http_delete("/queues/%2f/baz", ?NO_CONTENT),
     http_delete("/queues/%2f/foo", ?NOT_FOUND),
     http_get("/queues/badvhost", ?NOT_FOUND),
-    ok.
+    passed.
 
 bindings_test() ->
     XArgs = [{type, <<"direct">>}],
@@ -485,7 +507,7 @@ bindings_test() ->
     http_get("/bindings/badvhost", ?NOT_FOUND),
     http_get("/bindings/badvhost/myqueue/myexchange/routing", ?NOT_FOUND),
     http_get("/bindings/%2f/e/myexchange/q/myqueue/routing", ?NOT_FOUND),
-    ok.
+    passed.
 
 bindings_post_test() ->
     XArgs = [{type, <<"direct">>}],
@@ -514,7 +536,7 @@ bindings_post_test() ->
     http_delete(URI, ?NO_CONTENT),
     http_delete("/exchanges/%2f/myexchange", ?NO_CONTENT),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 bindings_e2e_test() ->
     BArgs = [{routing_key, <<"routing">>}, {arguments, []}],
@@ -550,7 +572,7 @@ bindings_e2e_test() ->
                 http_get("/exchanges/%2f/amq.headers/bindings/destination")),
     http_delete("/bindings/%2f/e/amq.direct/e/amq.headers/routing", ?NO_CONTENT),
     http_get("/bindings/%2f/e/amq.direct/e/amq.headers/rooting", ?NOT_FOUND),
-    ok.
+    passed.
 
 permissions_administrator_test() ->
     http_put("/users/isadmin", [{password, <<"isadmin">>},
@@ -576,7 +598,7 @@ permissions_administrator_test() ->
     Test("/permissions/%2f/guest"),
     http_delete("/users/notadmin", ?NO_CONTENT),
     http_delete("/users/isadmin", ?NO_CONTENT),
-    ok.
+    passed.
 
 permissions_vhost_test() ->
     QArgs = [],
@@ -628,7 +650,7 @@ permissions_vhost_test() ->
     http_delete("/vhosts/myvhost1", ?NO_CONTENT),
     http_delete("/vhosts/myvhost2", ?NO_CONTENT),
     http_delete("/users/myuser", ?NO_CONTENT),
-    ok.
+    passed.
 
 permissions_amqp_test() ->
     %% Just test that it works at all, not that it works in all possible cases.
@@ -643,7 +665,7 @@ permissions_amqp_test() ->
     http_put("/queues/%2f/bar-queue", QArgs, "nonexistent", "nonexistent",
              ?NOT_AUTHORISED),
     http_delete("/users/myuser", ?NO_CONTENT),
-    ok.
+    passed.
 
 get_conn(Username, Password) ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{
@@ -719,7 +741,7 @@ permissions_connection_channel_consumer_test() ->
     http_get("/connections/foo", ?NOT_FOUND),
     http_get("/channels/foo", ?NOT_FOUND),
     http_delete("/queues/%2f/test", ?NO_CONTENT),
-    ok.
+    passed.
 
 
 
@@ -737,7 +759,7 @@ consumers_test() ->
                   {consumer_tag, <<"my-ctag">>}]], http_get("/consumers")),
     amqp_connection:close(Conn),
     http_delete("/queues/%2f/test", ?NO_CONTENT),
-    ok.
+    passed.
 
 defs(Key, URI, CreateMethod, Args) ->
     defs(Key, URI, CreateMethod, Args,
@@ -786,7 +808,7 @@ defs(Key, URI, CreateMethod, Args, DeleteFun) ->
     %% And delete it again
     DeleteFun(URI2),
 
-    ok.
+    passed.
 
 definitions_test() ->
     rabbit_runtime_parameters_test:register(),
@@ -847,7 +869,7 @@ definitions_test() ->
 
     rabbit_runtime_parameters_test:unregister_policy_validator(),
     rabbit_runtime_parameters_test:unregister(),
-    ok.
+    passed.
 
 defs_vhost(Key, URI, CreateMethod, Args) ->
     Rep1 = fun (S, S2) -> re:replace(S, "<vhost>", S2, [{return, list}]) end,
@@ -896,7 +918,7 @@ defs_vhost(Key, URI0, Rep1, VHost1, VHost2, CreateMethod, Args1, Args2,
     DeleteFun(URI2),
     URI3 = create(CreateMethod, Rep1(URI0, VHost2), Args2),
     DeleteFun(URI3),
-    ok.
+    passed.
 
 definitions_vhost_test() ->
     %% Ensures that definitions can be exported/imported from a single virtual
@@ -929,7 +951,7 @@ definitions_vhost_test() ->
 
     rabbit_runtime_parameters_test:unregister_policy_validator(),
     rabbit_runtime_parameters_test:unregister(),
-    ok.
+    passed.
 
 definitions_password_test() ->
     % Import definitions from 3.5.x
@@ -988,7 +1010,7 @@ definitions_password_test() ->
     UsersDefault = pget(users, DefinitionsDefault),
 
     true = lists:any(fun(I) -> test_item(ExpectedDefault, I) end, UsersDefault),
-    ok.
+    passed.
 
 definitions_remove_things_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -1002,7 +1024,7 @@ definitions_remove_things_test() ->
     [] = pget(bindings, Definitions),
     amqp_channel:close(Ch),
     amqp_connection:close(Conn),
-    ok.
+    passed.
 
 definitions_server_named_queue_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -1019,18 +1041,18 @@ definitions_server_named_queue_test() ->
     http_post("/definitions", Definitions, [?CREATED, ?NO_CONTENT]),
     http_get(Path, ?OK),
     http_delete(Path, ?NO_CONTENT),
-    ok.
+    passed.
 
 aliveness_test() ->
     [{status, <<"ok">>}] = http_get("/aliveness-test/%2f", ?OK),
     http_get("/aliveness-test/foo", ?NOT_FOUND),
     http_delete("/queues/%2f/aliveness-test", ?NO_CONTENT),
-    ok.
+    passed.
 
 healthchecks_test() ->
     [{status, <<"ok">>}] = http_get("/healthchecks/node", ?OK),
     http_get("/healthchecks/node/foo", ?NOT_FOUND),
-    ok.
+    passed.
 
 arguments_test() ->
     XArgs = [{type, <<"headers">>},
@@ -1056,7 +1078,7 @@ arguments_test() ->
 				     "~nXOkVwqZzUOdS9_HcBWheg", ?OK))),
     http_delete("/exchanges/%2f/myexchange", ?NO_CONTENT),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 arguments_table_test() ->
     Args = [{'upstreams', [<<"amqp://localhost/%2f/upstream1">>,
@@ -1069,7 +1091,7 @@ arguments_table_test() ->
     http_post("/definitions", Definitions, ?CREATED),
     Args = pget(arguments, http_get("/exchanges/%2f/myexchange", ?OK)),
     http_delete("/exchanges/%2f/myexchange", ?NO_CONTENT),
-    ok.
+    passed.
 
 queue_purge_test() ->
     QArgs = [],
@@ -1097,7 +1119,7 @@ queue_purge_test() ->
     amqp_channel:close(Ch),
     amqp_connection:close(Conn),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 queue_actions_test() ->
     http_put("/queues/%2f/q", [], [?CREATED, ?NO_CONTENT]),
@@ -1105,7 +1127,7 @@ queue_actions_test() ->
     http_post("/queues/%2f/q/actions", [{action, cancel_sync}], ?NO_CONTENT),
     http_post("/queues/%2f/q/actions", [{action, change_colour}], ?BAD_REQUEST),
     http_delete("/queues/%2f/q", ?NO_CONTENT),
-    ok.
+    passed.
 
 exclusive_consumer_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -1118,7 +1140,7 @@ exclusive_consumer_test() ->
     http_get("/queues/%2f/"), %% Just check we don't blow up
     amqp_channel:close(Ch),
     amqp_connection:close(Conn),
-    ok.
+    passed.
 
 
 exclusive_queue_test() ->
@@ -1137,7 +1159,7 @@ exclusive_queue_test() ->
 		 {arguments,   []}], Queue),
     amqp_channel:close(Ch),
     amqp_connection:close(Conn),
-    ok.
+    passed.
 
 connections_channels_pagination_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -1171,7 +1193,7 @@ connections_channels_pagination_test() ->
     amqp_connection:close(Conn1),
     amqp_channel:close(Ch2),
     amqp_connection:close(Conn2),
-    ok.
+    passed.
 
 exchanges_pagination_test() ->
     QArgs = [],
@@ -1230,7 +1252,7 @@ exchanges_pagination_test() ->
     http_delete("/exchanges/%2f/test2_reg", ?NO_CONTENT),
     http_delete("/exchanges/vh1/reg_test3", ?NO_CONTENT),
     http_delete("/vhosts/vh1", ?NO_CONTENT),
-    ok.
+    passed.
 
 exchanges_pagination_permissions_test() ->
     http_put("/users/admin",   [{password, <<"admin">>},
@@ -1254,7 +1276,7 @@ exchanges_pagination_permissions_test() ->
     http_delete("/exchanges/%2f/test0", ?NO_CONTENT),
     http_delete("/exchanges/vh1/test1","admin","admin", ?NO_CONTENT),
     http_delete("/users/admin", ?NO_CONTENT),
-    ok.
+    passed.
 
 
 
@@ -1356,7 +1378,7 @@ queue_pagination_test() ->
     http_delete("/queues/%2f/test2_reg", ?NO_CONTENT),
     http_delete("/queues/vh1/reg_test3", ?NO_CONTENT),
     http_delete("/vhosts/vh1", ?NO_CONTENT),
-    ok.
+    passed.
 
 queues_pagination_permissions_test() ->
     http_put("/users/admin",   [{password, <<"admin">>},
@@ -1380,7 +1402,7 @@ queues_pagination_permissions_test() ->
     http_delete("/queues/%2f/test0", ?NO_CONTENT),
     http_delete("/queues/vh1/test1","admin","admin", ?NO_CONTENT),
     http_delete("/users/admin", ?NO_CONTENT),
-    ok.
+    passed.
 
 samples_range_test() ->
     {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
@@ -1459,7 +1481,7 @@ samples_range_test() ->
 
     http_delete("/vhosts/vh1", ?NO_CONTENT),
 
-    ok.
+    passed.
 
 sorting_test() ->
     QArgs = [],
@@ -1501,7 +1523,7 @@ sorting_test() ->
     http_delete("/queues/%2f/test2", ?NO_CONTENT),
     http_delete("/queues/vh1/test3", ?NO_CONTENT),
     http_delete("/vhosts/vh1", ?NO_CONTENT),
-    ok.
+    passed.
 
 format_output_test() ->
     QArgs = [],
@@ -1515,7 +1537,7 @@ format_output_test() ->
 		  {recoverable_slaves, null}]], http_get("/queues", ?OK)),
     http_delete("/queues/%2f/test0", ?NO_CONTENT),
     http_delete("/vhosts/vh1", ?NO_CONTENT),
-    ok.
+    passed.
 
 columns_test() ->
     http_put("/queues/%2f/test", [{arguments, [{<<"foo">>, <<"bar">>}]}],
@@ -1525,7 +1547,7 @@ columns_test() ->
     [{arguments, [{foo, <<"bar">>}]}, {name, <<"test">>}] =
         lists:sort(http_get("/queues/%2f/test?columns=arguments.foo,name", ?OK)),
     http_delete("/queues/%2f/test", ?NO_CONTENT),
-    ok.
+    passed.
 
 get_test() ->
     %% Real world example...
@@ -1571,7 +1593,7 @@ get_test() ->
                                                {count,    5},
                                                {encoding, auto}], ?OK),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 get_fail_test() ->
     http_put("/users/myuser", [{password, <<"password">>},
@@ -1583,7 +1605,7 @@ get_fail_test() ->
                {encoding, auto}], "myuser", "password", ?NOT_AUTHORISED),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
     http_delete("/users/myuser", ?NO_CONTENT),
-    ok.
+    passed.
 
 publish_test() ->
     Headers = [{'x-forwarding', [[{uri,<<"amqp://localhost/%2f/upstream">>}]]}],
@@ -1601,7 +1623,7 @@ publish_test() ->
                                                    {encoding, auto}], ?OK),
     assert_item(Msg, Msg3),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 publish_accept_json_test() ->
     Headers = [{'x-forwarding', [[{uri, <<"amqp://localhost/%2f/upstream">>}]]}],
@@ -1623,7 +1645,7 @@ publish_accept_json_test() ->
 				    {encoding, auto}], ?OK),
     assert_item(Msg, Msg3),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 publish_fail_test() ->
     Msg = msg(<<"myqueue">>, [], <<"Hello world">>),
@@ -1654,7 +1676,7 @@ publish_fail_test() ->
                     {timestamp,  <<"recently">>},
                     {expiration, 1234}]],
     http_delete("/users/myuser", ?NO_CONTENT),
-    ok.
+    passed.
 
 publish_base64_test() ->
     Msg     = msg(<<"myqueue">>, [], <<"YWJjZA==">>, <<"base64">>),
@@ -1669,7 +1691,7 @@ publish_base64_test() ->
                                                    {encoding, auto}], ?OK),
     ?assertEqual(<<"abcd">>, pget(payload, Msg2)),
     http_delete("/queues/%2f/myqueue", ?NO_CONTENT),
-    ok.
+    passed.
 
 publish_unrouted_test() ->
     Msg = msg(<<"hmmm">>, [], <<"Hello world">>),
@@ -1732,7 +1754,7 @@ parameters_test() ->
     0 = length(http_get("/parameters/test")),
     0 = length(http_get("/parameters/test/%2f")),
     rabbit_runtime_parameters_test:unregister(),
-    ok.
+    passed.
 
 policy_test() ->
     rabbit_runtime_parameters_test:register_policy_validator(),
@@ -1765,7 +1787,7 @@ policy_test() ->
     0 = length(http_get("/policies")),
     0 = length(http_get("/policies/%2f")),
     rabbit_runtime_parameters_test:unregister_policy_validator(),
-    ok.
+    passed.
 
 policy_permissions_test() ->
     rabbit_runtime_parameters_test:register(),
@@ -1848,20 +1870,64 @@ policy_permissions_test() ->
     http_delete("/policies/%2f/HA", ?NO_CONTENT),
 
     rabbit_runtime_parameters_test:unregister(),
-    ok.
+    passed.
 
 issue67_test()->
     {ok, {{_, 401, _}, Headers, _}} = req(get, "/queues",
                         [auth_header("user_no_access", "password_no_access")]),
     ?assertEqual("application/json",
       proplists:get_value("content-type",Headers)),
-    ok.
+    passed.
 
 extensions_test() ->
     [[{javascript,<<"dispatcher.js">>}]] = http_get("/extensions", ?OK),
-    ok.
+    passed.
 
-%%---------------------------------------------------------------------------
+cors_test() ->
+    %% With CORS disabled. No header should be received.
+    {ok, {_, HdNoCORS, _}} = req(get, "/overview", [auth_header("guest", "guest")]),
+    false = lists:keymember("access-control-allow-origin", 1, HdNoCORS),
+    %% The Vary header should include "Origin" regardless of CORS configuration.
+    {_, "Accept-Encoding, origin"} = lists:keyfind("vary", 1, HdNoCORS),
+    %% Enable CORS.
+    application:set_env(rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]),
+    %% We should only receive allow-origin and allow-credentials from GET.
+    {ok, {_, HdGetCORS, _}} = req(get, "/overview",
+        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+    true = lists:keymember("access-control-allow-origin", 1, HdGetCORS),
+    true = lists:keymember("access-control-allow-credentials", 1, HdGetCORS),
+    false = lists:keymember("access-control-expose-headers", 1, HdGetCORS),
+    false = lists:keymember("access-control-max-age", 1, HdGetCORS),
+    false = lists:keymember("access-control-allow-methods", 1, HdGetCORS),
+    false = lists:keymember("access-control-allow-headers", 1, HdGetCORS),
+    %% We should receive allow-origin, allow-credentials and allow-methods from OPTIONS.
+    {ok, {_, HdOptionsCORS, _}} = req(options, "/overview",
+        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+    true = lists:keymember("access-control-allow-origin", 1, HdOptionsCORS),
+    true = lists:keymember("access-control-allow-credentials", 1, HdOptionsCORS),
+    false = lists:keymember("access-control-expose-headers", 1, HdOptionsCORS),
+    true = lists:keymember("access-control-max-age", 1, HdOptionsCORS),
+    true = lists:keymember("access-control-allow-methods", 1, HdOptionsCORS),
+    false = lists:keymember("access-control-allow-headers", 1, HdOptionsCORS),
+    %% We should receive allow-headers when request-headers is sent.
+    {ok, {_, HdAllowHeadersCORS, _}} = req(options, "/overview",
+        [{"origin", "http://rabbitmq.com"},
+         auth_header("guest", "guest"),
+         {"access-control-request-headers", "x-piggy-bank"}]),
+    {_, "x-piggy-bank"} = lists:keyfind("access-control-allow-headers", 1, HdAllowHeadersCORS),
+    %% Disable preflight request caching.
+    application:set_env(rabbitmq_management, cors_max_age, undefined),
+    %% We shouldn't receive max-age anymore.
+    {ok, {_, HdNoMaxAgeCORS, _}} = req(options, "/overview",
+        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+    false = lists:keymember("access-control-max-age", 1, HdNoMaxAgeCORS),
+    %% Disable CORS again.
+    application:set_env(rabbitmq_management, cors_allow_origins, []),
+    passed.
+
+%% -------------------------------------------------------------------
+%% Helpers.
+%% -------------------------------------------------------------------
 
 msg(Key, Headers, Body) ->
     msg(Key, Headers, Body, <<"string">>).
@@ -1879,7 +1945,7 @@ local_port(Conn) ->
     {ok, Port} = inet:port(Sock),
     Port.
 
-%%---------------------------------------------------------------------------
+
 http_get(Path) ->
     http_get(Path, ?OK).
 
