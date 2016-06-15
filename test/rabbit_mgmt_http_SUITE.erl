@@ -20,7 +20,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
--import(rabbit_ct_client_helpers, [close_connection/1, close_channel/1]).
+-import(rabbit_ct_client_helpers, [close_connection/1, close_channel/1, open_unmanaged_connection/1]).
 -import(rabbit_mgmt_test_util, [assert_list/2, assert_item/2, test_item/2,
                                 assert_keys/2, assert_no_keys/2]).
 
@@ -738,14 +738,6 @@ open_connection_and_channel(Config) ->
     Conn = rabbit_ct_client_helpers:open_connection(Config, 0),
     {ok, Ch}   = amqp_connection:open_channel(Conn),
     {Conn, Ch}.
-
-%% Opens a new connection that's not managed by CT helpers' channel manager
-%% which performs connection reuse and caching.
-open_unmanaged_connection(Config) ->
-    Port       = amqp_port(Config),
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{
-                                          port = Port}),
-    Conn.
 
 get_conn(Config, Username, Password) ->
     Port       = amqp_port(Config),
