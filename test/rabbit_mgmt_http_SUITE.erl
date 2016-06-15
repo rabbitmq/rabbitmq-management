@@ -20,6 +20,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
+-import(rabbit_ct_client_helpers, [close_connection/1, close_channel/1]).
 -import(rabbit_mgmt_test_util, [assert_list/2, assert_item/2, test_item/2,
                                 assert_keys/2, assert_no_keys/2]).
 
@@ -68,43 +69,43 @@ groups() ->
                                permissions_vhost_test,
                                permissions_amqp_test,
                                permissions_connection_channel_consumer_test,
-                               consumers_test
-                              %%  definitions_test,
-                              %%  definitions_vhost_test,
-                              %%  definitions_password_test,
-                              %%  definitions_remove_things_test,
-                              %%  definitions_server_named_queue_test,
-                              %%  aliveness_test,
-                              %%  healthchecks_test,
-                              %%  arguments_test,
-                              %%  arguments_table_test,
-                              %%  queue_purge_test,
-                              %%  queue_actions_test,
-                              %%  exclusive_consumer_test,
-                              %%  exclusive_queue_test,
-                              %%  connections_channels_pagination_test,
-                              %%  exchanges_pagination_test,
-                              %%  exchanges_pagination_permissions_test,
-                              %%  queue_pagination_test,
-                              %%  queues_pagination_permissions_test,
-                              %%  samples_range_test,
-                              %%  sorting_test,
-                              %%  format_output_test,
-                              %%  columns_test,
-                              %%  get_test,
-                              %%  get_fail_test,
-                              %%  publish_test,
-                              %%  publish_accept_json_test,
-                              %%  publish_fail_test,
-                              %%  publish_base64_test,
-                              %%  publish_unrouted_test,
-                              %%  if_empty_unused_test,
-                              %%  parameters_test,
-                              %%  policy_test,
-                              %%  policy_permissions_test,
-                              %%  issue67_test,
-                              %%  extensions_test,
-                              %%  cors_test
+                               consumers_test,
+                               definitions_test,
+                               definitions_vhost_test,
+                               definitions_password_test,
+                               definitions_remove_things_test,
+                               definitions_server_named_queue_test,
+                               aliveness_test,
+                               healthchecks_test,
+                               arguments_test,
+                               arguments_table_test,
+                               queue_purge_test,
+                               queue_actions_test,
+                               exclusive_consumer_test,
+                               exclusive_queue_test,
+                               connections_channels_pagination_test,
+                               exchanges_pagination_test,
+                               exchanges_pagination_permissions_test,
+                               queue_pagination_test,
+                               queues_pagination_permissions_test,
+                               samples_range_test,
+                               sorting_test,
+                               format_output_test,
+                               columns_test,
+                               get_test,
+                               get_fail_test,
+                               publish_test,
+                               publish_accept_json_test,
+                               publish_fail_test,
+                               publish_base64_test,
+                               publish_unrouted_test,
+                               if_empty_unused_test,
+                               parameters_test,
+                               policy_test,
+                               policy_permissions_test,
+                               issue67_test,
+                               extensions_test,
+                               cors_test
                               ]}
     ].
 
@@ -120,12 +121,12 @@ init_per_suite(Config) ->
                                                    ]),
     rabbit_ct_helpers:run_setup_steps(Config1,
                                       rabbit_ct_broker_helpers:setup_steps() ++
-                                      rabbit_ct_client_helpers:setup_steps()).
+                                          rabbit_ct_client_helpers:setup_steps()).
 
 end_per_suite(Config) ->
     rabbit_ct_helpers:run_teardown_steps(Config,
                                          rabbit_ct_client_helpers:teardown_steps() ++
-                                         rabbit_ct_broker_helpers:teardown_steps()).
+                                             rabbit_ct_broker_helpers:teardown_steps()).
 
 init_per_group(_, Config) ->
     Config.
@@ -420,19 +421,19 @@ permissions_test(Config) ->
     passed.
 
 connections_test(Config) ->
-    Port = amqp_port(Config),
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{port = Port}),
+    {Conn, _Ch} = open_connection_and_channel(Config),
     LocalPort = local_port(Conn),
     Path = binary_to_list(
              rabbit_mgmt_format:print(
                "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w",
-               [LocalPort, Port])),
+               [LocalPort, amqp_port(Config)])),
     http_get(Config, Path, ?OK),
     http_delete(Config, Path, ?NO_CONTENT),
     %% TODO rabbit_reader:shutdown/2 returns before the connection is
     %% closed. It may not be worth fixing.
     timer:sleep(200),
     http_get(Config, Path, ?NOT_FOUND),
+    close_connection(Conn),
     passed.
 
 multiple_invalid_connections_test(Config) ->
@@ -730,8 +731,24 @@ permissions_amqp_test(Config) ->
     http_delete(Config, "/users/myuser", ?NO_CONTENT),
     passed.
 
+%% Opens a new connection and a channel on it.
+%% The channel is not managed by rabbit_ct_client_helpers and
+%% should be explicitly closed by the caller.
+open_connection_and_channel(Config) ->
+    Conn = rabbit_ct_client_helpers:open_connection(Config, 0),
+    {ok, Ch}   = amqp_connection:open_channel(Conn),
+    {Conn, Ch}.
+
+%% Opens a new connection that's not managed by CT helpers' channel manager
+%% which performs connection reuse and caching.
+open_unmanaged_connection(Config) ->
+    Port       = amqp_port(Config),
+    {ok, Conn} = amqp_connection:start(#amqp_params_network{
+                                          port = Port}),
+    Conn.
+
 get_conn(Config, Username, Password) ->
-    Port       = rabbit_ct_broker_helpers:get_node_config(Config, 0, tcp_port_amqp),
+    Port       = amqp_port(Config),
     {ok, Conn} = amqp_connection:start(#amqp_params_network{
                                           port     = Port,
 					  username = list_to_binary(Username),
@@ -875,9 +892,16 @@ defs(Config, Key, URI, CreateMethod, Args, DeleteFun) ->
 
     passed.
 
+register_parameters_and_policy_validator(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, rabbit_runtime_parameters_test, register, []),
+    rabbit_ct_broker_helpers:rpc(Config, 0, rabbit_runtime_parameters_test, register_policy_validator, []).
+
+unregister_parameters_and_policy_validator(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, rabbit_runtime_parameters_test, unregister_policy_validator, []),
+    rabbit_ct_broker_helpers:rpc(Config, 0, rabbit_runtime_parameters_test, unregister, []).
+
 definitions_test(Config) ->
-    rabbit_runtime_parameters_test:register(),
-    rabbit_runtime_parameters_test:register_policy_validator(),
+    register_parameters_and_policy_validator(Config),
 
     defs_v(Config, queues, "/queues/<vhost>/my-queue", put,
            [{name,    <<"my-queue">>},
@@ -932,8 +956,7 @@ definitions_test(Config) ->
          {bindings,    []}],
     http_post(Config, "/definitions", BrokenConfig, ?BAD_REQUEST),
 
-    rabbit_runtime_parameters_test:unregister_policy_validator(),
-    rabbit_runtime_parameters_test:unregister(),
+    unregister_parameters_and_policy_validator(Config),
     passed.
 
 defs_vhost(Config, Key, URI, CreateMethod, Args) ->
@@ -989,8 +1012,7 @@ definitions_vhost_test(Config) ->
     %% Ensures that definitions can be exported/imported from a single virtual
     %% host to another
 
-    rabbit_runtime_parameters_test:register(),
-    rabbit_runtime_parameters_test:register_policy_validator(),
+    register_parameters_and_policy_validator(Config),
 
     defs_vhost(Config, queues, "/queues/<vhost>/my-queue", put,
                [{name,    <<"my-queue">>},
@@ -1007,15 +1029,14 @@ definitions_vhost_test(Config) ->
                 {definition, [{testpos, [1, 2, 3]}]},
                 {priority,   1}]),
 
-    Config =
+    Upload =
         [{queues,      []},
          {exchanges,   []},
          {policies,    []},
          {bindings,    []}],
-    http_post(Config, "/definitions/othervhost", Config, ?BAD_REQUEST),
+    http_post(Config, "/definitions/othervhost", Upload, ?BAD_REQUEST),
 
-    rabbit_runtime_parameters_test:unregister_policy_validator(),
-    rabbit_runtime_parameters_test:unregister(),
+    unregister_parameters_and_policy_validator(Config),
     passed.
 
 definitions_password_test(Config) ->
@@ -1031,11 +1052,7 @@ definitions_password_test(Config) ->
                   {tags,          <<"management">>}],
     http_post(Config, "/definitions", Config35, ?CREATED),
     Definitions35 = http_get(Config, "/definitions", ?OK),
-
     Users35 = pget(users, Definitions35),
-
-    io:format("Defs: ~p ~n Exp: ~p~n", [Users35, Expected35]),
-
     true = lists:any(fun(I) -> test_item(Expected35, I) end, Users35),
 
     %% Import definitions from from 3.6.0
@@ -1052,7 +1069,6 @@ definitions_password_test(Config) ->
 
     Definitions36 = http_get(Config, "/definitions", ?OK),
     Users36 = pget(users, Definitions36),
-
     true = lists:any(fun(I) -> test_item(Expected36, I) end, Users36),
 
     %% No hashing_algorithm provided
@@ -1061,9 +1077,9 @@ definitions_password_test(Config) ->
                                {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
                                {tags,          <<"management">>}]
                              ]}],
-    application:set_env(rabbit,
-                        password_hashing_module,
-                        rabbit_password_hashing_sha512),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbit,
+                                                                   password_hashing_module,
+                                                                   rabbit_password_hashing_sha512]),
 
     ExpectedDefault = [{name,          <<"myuser">>},
                        {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
@@ -1078,8 +1094,7 @@ definitions_password_test(Config) ->
     passed.
 
 definitions_remove_things_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     amqp_channel:call(Ch, #'queue.declare'{ queue = <<"my-exclusive">>,
                                             exclusive = true }),
     http_get(Config, "/queues/%2f/my-exclusive", ?OK),
@@ -1088,16 +1103,15 @@ definitions_remove_things_test(Config) ->
     [] = pget(exchanges, Definitions),
     [] = pget(bindings, Definitions),
     amqp_channel:close(Ch),
-    amqp_connection:close(Conn),
+    close_connection(Conn),
     passed.
 
 definitions_server_named_queue_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     #'queue.declare_ok'{ queue = QName } =
         amqp_channel:call(Ch, #'queue.declare'{}),
-    amqp_channel:close(Ch),
-    amqp_connection:close(Conn),
+    close_channel(Ch),
+    close_connection(Conn),
     Path = "/queues/%2f/" ++ mochiweb_util:quote_plus(QName),
     http_get(Config, Path, ?OK),
     Definitions = http_get(Config, "/definitions", ?OK),
@@ -1161,8 +1175,7 @@ arguments_table_test(Config) ->
 queue_purge_test(Config) ->
     QArgs = [],
     http_put(Config, "/queues/%2f/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     Publish = fun() ->
                       amqp_channel:call(
                         Ch, #'basic.publish'{exchange = <<"">>,
@@ -1181,8 +1194,8 @@ queue_purge_test(Config) ->
     http_delete(Config, "/queues/%2f/exclusive", ?BAD_REQUEST),
     #'basic.get_empty'{} =
         amqp_channel:call(Ch, #'basic.get'{queue = <<"myqueue">>}),
-    amqp_channel:close(Ch),
-    amqp_connection:close(Conn),
+    close_channel(Ch),
+    close_connection(Conn),
     http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
     passed.
 
@@ -1195,22 +1208,20 @@ queue_actions_test(Config) ->
     passed.
 
 exclusive_consumer_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     #'queue.declare_ok'{ queue = QName } =
         amqp_channel:call(Ch, #'queue.declare'{exclusive = true}),
     amqp_channel:subscribe(Ch, #'basic.consume'{queue     = QName,
                                                 exclusive = true}, self()),
     timer:sleep(1000), %% Sadly we need to sleep to let the stats update
     http_get(Config, "/queues/%2f/"), %% Just check we don't blow up
-    amqp_channel:close(Ch),
-    amqp_connection:close(Conn),
+    close_channel(Ch),
+    close_connection(Conn),
     passed.
 
 
 exclusive_queue_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     #'queue.declare_ok'{ queue = QName } =
 	amqp_channel:call(Ch, #'queue.declare'{exclusive = true}),
     timer:sleep(1000), %% Sadly we need to sleep to let the stats update
@@ -1223,15 +1234,17 @@ exclusive_queue_test(Config) ->
 		 {exclusive,   true},
 		 {arguments,   []}], Queue),
     amqp_channel:close(Ch),
-    amqp_connection:close(Conn),
+    close_connection(Conn),
     passed.
 
 connections_channels_pagination_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
-    {ok, Conn1} = amqp_connection:start(#amqp_params_network{}),
+    %% this test uses "unmanaged" (by Common Test helpers) connections to avoid
+    %% connection caching
+    Conn      = open_unmanaged_connection(Config),
+    {ok, Ch}  = amqp_connection:open_channel(Conn),
+    Conn1     = open_unmanaged_connection(Config),
     {ok, Ch1} = amqp_connection:open_channel(Conn1),
-    {ok, Conn2} = amqp_connection:start(#amqp_params_network{}),
+    Conn2     = open_unmanaged_connection(Config),
     {ok, Ch2} = amqp_connection:open_channel(Conn2),
 
     timer:sleep(1000), %% Sadly we need to sleep to let the stats update
@@ -1258,6 +1271,7 @@ connections_channels_pagination_test(Config) ->
     amqp_connection:close(Conn1),
     amqp_channel:close(Ch2),
     amqp_connection:close(Conn2),
+
     passed.
 
 exchanges_pagination_test(Config) ->
@@ -1470,12 +1484,12 @@ queues_pagination_permissions_test(Config) ->
     passed.
 
 samples_range_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    
+    {Conn, Ch} = open_connection_and_channel(Config),
 
     %% Channels.
 
-    [ConnInfo] = http_get(Config, "/channels?lengths_age=60&lengths_incr=1", ?OK),
+    [ConnInfo | _] = http_get(Config, "/channels?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/channels?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
 
     {_, ConnDetails} = lists:keyfind(connection_details, 1, ConnInfo),
@@ -1621,8 +1635,7 @@ get_test(Config) ->
                   [{<<"uri">>, longstr,
                     <<"amqp://localhost/%2f/upstream">>}]}]}],
     http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
+    {Conn, Ch} = open_connection_and_channel(Config),
     Publish = fun (Payload) ->
                       amqp_channel:cast(
                         Ch, #'basic.publish'{exchange = <<>>,
@@ -1633,7 +1646,8 @@ get_test(Config) ->
     Publish(<<"1aaa">>),
     Publish(<<"2aaa">>),
     Publish(<<"3aaa">>),
-    amqp_connection:close(Conn),
+    amqp_channel:close(Ch),
+    close_connection(Conn),
     [Msg] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
                                                           {count,    1},
                                                           {encoding, auto},
@@ -1784,7 +1798,7 @@ if_empty_unused_test(Config) ->
     passed.
 
 parameters_test(Config) ->
-    rabbit_runtime_parameters_test:register(),
+    register_parameters_and_policy_validator(Config),
 
     http_put(Config, "/parameters/test/%2f/good", [{value, <<"ignore">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/parameters/test/%2f/maybe", [{value, <<"good">>}], [?CREATED, ?NO_CONTENT]),
@@ -1818,11 +1832,11 @@ parameters_test(Config) ->
     0 = length(http_get(Config, "/parameters")),
     0 = length(http_get(Config, "/parameters/test")),
     0 = length(http_get(Config, "/parameters/test/%2f")),
-    rabbit_runtime_parameters_test:unregister(),
+    unregister_parameters_and_policy_validator(Config),
     passed.
 
 policy_test(Config) ->
-    rabbit_runtime_parameters_test:register_policy_validator(),
+    register_parameters_and_policy_validator(Config),
     PolicyPos  = [{vhost,      <<"/">>},
                   {name,       <<"policy_pos">>},
                   {pattern,    <<".*">>},
@@ -1851,11 +1865,11 @@ policy_test(Config) ->
     http_delete(Config, "/policies/%2f/policy_even", ?NO_CONTENT),
     0 = length(http_get(Config, "/policies")),
     0 = length(http_get(Config, "/policies/%2f")),
-    rabbit_runtime_parameters_test:unregister_policy_validator(),
+    unregister_parameters_and_policy_validator(Config),
     passed.
 
 policy_permissions_test(Config) ->
-    rabbit_runtime_parameters_test:register(),
+    register_parameters_and_policy_validator(Config),
 
     http_put(Config, "/users/admin",  [{password, <<"admin">>},
                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
@@ -1934,7 +1948,7 @@ policy_permissions_test(Config) ->
     http_delete(Config, "/users/mgmt", ?NO_CONTENT),
     http_delete(Config, "/policies/%2f/HA", ?NO_CONTENT),
 
-    rabbit_runtime_parameters_test:unregister(),
+    unregister_parameters_and_policy_validator(Config),
     passed.
 
 issue67_test(Config)->
@@ -1955,7 +1969,7 @@ cors_test(Config) ->
     %% The Vary header should include "Origin" regardless of CORS configuration.
     {_, "Accept-Encoding, origin"} = lists:keyfind("vary", 1, HdNoCORS),
     %% Enable CORS.
-    application:set_env(rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]]),
     %% We should only receive allow-origin and allow-credentials from GET.
     {ok, {_, HdGetCORS, _}} = req(Config, get, "/overview",
                                   [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
@@ -1981,13 +1995,13 @@ cors_test(Config) ->
                                             {"access-control-request-headers", "x-piggy-bank"}]),
     {_, "x-piggy-bank"} = lists:keyfind("access-control-allow-headers", 1, HdAllowHeadersCORS),
     %% Disable preflight request caching.
-    application:set_env(rabbitmq_management, cors_max_age, undefined),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, cors_max_age, undefined]),
     %% We shouldn't receive max-age anymore.
     {ok, {_, HdNoMaxAgeCORS, _}} = req(Config, options, "/overview",
                                        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
     false = lists:keymember("access-control-max-age", 1, HdNoMaxAgeCORS),
     %% Disable CORS again.
-    application:set_env(rabbitmq_management, cors_allow_origins, []),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, cors_allow_origins, []]),
     passed.
 
 %% -------------------------------------------------------------------
@@ -2123,7 +2137,7 @@ auth_header(Username, Password) ->
     {"Authorization",
      "Basic " ++ binary_to_list(base64:encode(Username ++ ":" ++ Password))}.
 
-spawn_invalid(Config, 0) ->
+spawn_invalid(_Config, 0) ->
     ok;
 spawn_invalid(Config, N) ->
     Self = self(),

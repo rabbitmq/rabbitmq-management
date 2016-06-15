@@ -28,9 +28,9 @@
 
 all() ->
     [
-     gc_test,
-     format_test,
-     format_no_range_test
+     %% gc_test,
+     %% format_test,
+     %% format_no_range_test
     ].
 
 %% -------------------------------------------------------------------
