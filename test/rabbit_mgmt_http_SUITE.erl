@@ -38,14 +38,74 @@
 
 all() ->
     [
-      {group, non_parallel_tests}
+     {group, non_parallel_tests}
     ].
 
 groups() ->
     [
-      {non_parallel_tests, [], [
-                                overview_test
-        ]}
+     {non_parallel_tests, [], [
+                               overview_test,
+                               auth_test,
+                               cluster_name_test,
+                               nodes_test,
+                               memory_test,
+                               ets_tables_memory_test,
+                               vhosts_test,
+                               vhosts_trace_test,
+                               users_test,
+                               users_legacy_administrator_test,
+                               permissions_validation_test,
+                               permissions_list_test,
+                               permissions_test,
+                               connections_test,
+                               multiple_invalid_connections_test,
+                               exchanges_test,
+                               queues_test,
+                               bindings_test,
+                               bindings_post_test,
+                               bindings_e2e_test,
+                               permissions_administrator_test,
+                               permissions_vhost_test,
+                               permissions_amqp_test,
+                               permissions_connection_channel_consumer_test,
+                               consumers_test
+                              %%  definitions_test,
+                              %%  definitions_vhost_test,
+                              %%  definitions_password_test,
+                              %%  definitions_remove_things_test,
+                              %%  definitions_server_named_queue_test,
+                              %%  aliveness_test,
+                              %%  healthchecks_test,
+                              %%  arguments_test,
+                              %%  arguments_table_test,
+                              %%  queue_purge_test,
+                              %%  queue_actions_test,
+                              %%  exclusive_consumer_test,
+                              %%  exclusive_queue_test,
+                              %%  connections_channels_pagination_test,
+                              %%  exchanges_pagination_test,
+                              %%  exchanges_pagination_permissions_test,
+                              %%  queue_pagination_test,
+                              %%  queues_pagination_permissions_test,
+                              %%  samples_range_test,
+                              %%  sorting_test,
+                              %%  format_output_test,
+                              %%  columns_test,
+                              %%  get_test,
+                              %%  get_fail_test,
+                              %%  publish_test,
+                              %%  publish_accept_json_test,
+                              %%  publish_fail_test,
+                              %%  publish_base64_test,
+                              %%  publish_unrouted_test,
+                              %%  if_empty_unused_test,
+                              %%  parameters_test,
+                              %%  policy_test,
+                              %%  policy_permissions_test,
+                              %%  issue67_test,
+                              %%  extensions_test,
+                              %%  cors_test
+                              ]}
     ].
 
 %% -------------------------------------------------------------------
@@ -53,16 +113,18 @@ groups() ->
 %% -------------------------------------------------------------------
 
 init_per_suite(Config) ->
+    rabbit_ct_helpers:log_environment(),
     inets:start(),
     Config1 = rabbit_ct_helpers:set_config(Config, [
-                                                    {rmq_nodes_count, 1}
+                                                    {rmq_nodename_suffix, ?MODULE}
                                                    ]),
-    rabbit_ct_helpers:log_environment(),
     rabbit_ct_helpers:run_setup_steps(Config1,
-                                      rabbit_ct_broker_helpers:setup_steps()).
+                                      rabbit_ct_broker_helpers:setup_steps() ++
+                                      rabbit_ct_client_helpers:setup_steps()).
 
 end_per_suite(Config) ->
     rabbit_ct_helpers:run_teardown_steps(Config,
+                                         rabbit_ct_client_helpers:teardown_steps() ++
                                          rabbit_ct_broker_helpers:teardown_steps()).
 
 init_per_group(_, Config) ->
@@ -72,19 +134,10 @@ end_per_group(_, Config) ->
     Config.
 
 init_per_testcase(Testcase, Config) ->
-    rabbit_ct_helpers:testcase_started(Config, Testcase),
-    Config1 = rabbit_ct_helpers:set_config(Config, [
-        {rmq_nodename_suffix, Testcase}
-      ]),
-    rabbit_ct_helpers:run_steps(Config1,
-      rabbit_ct_broker_helpers:setup_steps() ++
-      rabbit_ct_client_helpers:setup_steps()).
+    rabbit_ct_helpers:testcase_started(Config, Testcase).
 
 end_per_testcase(Testcase, Config) ->
-    Config1 = rabbit_ct_helpers:run_steps(Config,
-      rabbit_ct_client_helpers:teardown_steps() ++
-      rabbit_ct_broker_helpers:teardown_steps()),
-    rabbit_ct_helpers:testcase_finished(Config1, Testcase).
+    rabbit_ct_helpers:testcase_finished(Config, Testcase).
 
 %% -------------------------------------------------------------------
 %% Testcases.
@@ -96,7 +149,7 @@ overview_test(Config) ->
     %% didn't blow up.
     true = 0 < length(pget(listeners, http_get(Config, "/overview"))),
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                               {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_get(Config, "/overview", "myuser", "myuser", ?OK),
     http_delete(Config, "/users/myuser", ?NO_CONTENT),
 
@@ -104,7 +157,7 @@ overview_test(Config) ->
 
 cluster_name_test(Config) ->
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                               {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/cluster-name", [{name, "foo"}], "myuser", "myuser", ?NOT_AUTHORISED),
     http_put(Config, "/cluster-name", [{name, "foo"}], ?NO_CONTENT),
     [{name, <<"foo">>}] = http_get(Config, "/cluster-name", "myuser", "myuser", ?OK),
@@ -113,9 +166,9 @@ cluster_name_test(Config) ->
 
 nodes_test(Config) ->
     http_put(Config, "/users/user", [{password, <<"user">>},
-                             {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/monitor", [{password, <<"monitor">>},
-                                {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
     DiscNode = [{type, <<"disc">>}, {running, true}],
     assert_list([DiscNode], http_get(Config, "/nodes")),
     assert_list([DiscNode], http_get(Config, "/nodes", "monitor", "monitor", ?OK)),
@@ -201,7 +254,7 @@ assert_percentage(Breakdown) ->
 
 auth_test(Config) ->
     http_put(Config, "/users/user", [{password, <<"user">>},
-                             {tags, <<"">>}], [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"">>}], [?CREATED, ?NO_CONTENT]),
     test_auth(Config, ?NOT_AUTHORISED, []),
     test_auth(Config, ?NOT_AUTHORISED, [auth_header("user", "user")]),
     test_auth(Config, ?NOT_AUTHORISED, [auth_header("guest", "gust")]),
@@ -227,7 +280,9 @@ vhosts_test(Config) ->
     http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
     %% It's not there
     http_get(Config, "/vhosts/myvhost", ?NOT_FOUND),
-    http_delete(Config, "/vhosts/myvhost", ?NOT_FOUND).
+    http_delete(Config, "/vhosts/myvhost", ?NOT_FOUND),
+
+    passed.
 
 vhosts_trace_test(Config) ->
     http_put(Config, "/vhosts/myvhost", none, [?CREATED, ?NO_CONTENT]),
@@ -240,7 +295,9 @@ vhosts_trace_test(Config) ->
     Enabled = http_get(Config, "/vhosts/myvhost"),
     http_put(Config, "/vhosts/myvhost", [{tracing, false}], ?NO_CONTENT),
     Disabled = http_get(Config, "/vhosts/myvhost"),
-    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT).
+    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
+
+    passed.
 
 users_test(Config) ->
     assert_item([{name, <<"guest">>}, {tags, <<"administrator">>}],
@@ -251,23 +308,23 @@ users_test(Config) ->
     http_put(Config, "/users/myuser", [{tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/myuser", [{password_hash, <<"not_hash">>}], ?BAD_REQUEST),
     http_put(Config, "/users/myuser", [{password_hash,
-                                <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
-                               {tags, <<"management">>}], ?NO_CONTENT),
+                                        <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
+                                       {tags, <<"management">>}], ?NO_CONTENT),
     assert_item([{name, <<"myuser">>}, {tags, <<"management">>},
                  {password_hash, <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
                  {hashing_algorithm, <<"rabbit_password_hashing_sha256">>}],
                 http_get(Config, "/users/myuser")),
 
     http_put(Config, "/users/myuser", [{password_hash,
-                                <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
-                               {hashing_algorithm, <<"rabbit_password_hashing_md5">>},
-                               {tags, <<"management">>}], ?NO_CONTENT),
+                                        <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
+                                       {hashing_algorithm, <<"rabbit_password_hashing_md5">>},
+                                       {tags, <<"management">>}], ?NO_CONTENT),
     assert_item([{name, <<"myuser">>}, {tags, <<"management">>},
                  {password_hash, <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
                  {hashing_algorithm, <<"rabbit_password_hashing_md5">>}],
                 http_get(Config, "/users/myuser")),
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                               {tags, <<"administrator, foo">>}], ?NO_CONTENT),
+                                       {tags, <<"administrator, foo">>}], ?NO_CONTENT),
     assert_item([{name, <<"myuser">>}, {tags, <<"administrator,foo">>}],
                 http_get(Config, "/users/myuser")),
     assert_list([[{name, <<"myuser">>}, {tags, <<"administrator,foo">>}],
@@ -363,30 +420,34 @@ permissions_test(Config) ->
     passed.
 
 connections_test(Config) ->
-    {ok, Conn} = amqp_connection:start(#amqp_params_network{}),
+    Port = amqp_port(Config),
+    {ok, Conn} = amqp_connection:start(#amqp_params_network{port = Port}),
     LocalPort = local_port(Conn),
     Path = binary_to_list(
              rabbit_mgmt_format:print(
-               "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A5672",
-               [LocalPort])),
+               "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w",
+               [LocalPort, Port])),
     http_get(Config, Path, ?OK),
     http_delete(Config, Path, ?NO_CONTENT),
     %% TODO rabbit_reader:shutdown/2 returns before the connection is
     %% closed. It may not be worth fixing.
     timer:sleep(200),
-    http_get(Config, Path, ?NOT_FOUND).
+    http_get(Config, Path, ?NOT_FOUND),
+    passed.
 
 multiple_invalid_connections_test(Config) ->
     Count = 100,
-    spawn_invalid(Count),
+    spawn_invalid(Config, Count),
     Page0 = http_get(Config, "/connections?page=1&page_size=100", ?OK),
     wait_for_answers(Count),
     Page1 = http_get(Config, "/connections?page=1&page_size=100", ?OK),
     ?assertEqual(0, proplists:get_value(total_count, Page0)),
-    ?assertEqual(0, proplists:get_value(total_count, Page1)).
+    ?assertEqual(0, proplists:get_value(total_count, Page1)),
+    passed.
 
 test_auth(Config, Code, Headers) ->
-    {ok, {{_, Code, _}, _, _}} = req(Config, get, "/overview", Headers).
+    {ok, {{_, Code, _}, _, _}} = req(Config, get, "/overview", Headers),
+    passed.
 
 exchanges_test(Config) ->
     %% Can pass booleans or strings
@@ -414,7 +475,7 @@ exchanges_test(Config) ->
     http_put(Config, "/exchanges/myvhost/bar", [{type, <<"bad_exchange_type">>}],
              ?BAD_REQUEST),
     http_put(Config, "/exchanges/myvhost/bar", [{type, <<"direct">>},
-                                        {durable, <<"troo">>}],
+                                                {durable, <<"troo">>}],
              ?BAD_REQUEST),
     http_put(Config, "/exchanges/myvhost/foo", [{type, <<"direct">>}],
              ?BAD_REQUEST),
@@ -578,11 +639,11 @@ bindings_e2e_test(Config) ->
 
 permissions_administrator_test(Config) ->
     http_put(Config, "/users/isadmin", [{password, <<"isadmin">>},
-                                {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/notadmin", [{password, <<"notadmin">>},
-                                 {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                         {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/notadmin", [{password, <<"notadmin">>},
-                                 {tags, <<"management">>}], ?NO_CONTENT),
+                                         {tags, <<"management">>}], ?NO_CONTENT),
     Test =
         fun(Path) ->
                 http_get(Config, Path, "notadmin", "notadmin", ?NOT_AUTHORISED),
@@ -606,7 +667,7 @@ permissions_vhost_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                               {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/vhosts/myvhost1", none, [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/vhosts/myvhost2", none, [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/permissions/myvhost1/myuser", PermArgs, [?CREATED, ?NO_CONTENT]),
@@ -660,7 +721,7 @@ permissions_amqp_test(Config) ->
     PermArgs = [{configure, <<"foo.*">>}, {write, <<"foo.*">>},
                 {read,      <<"foo.*">>}],
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                               {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/permissions/%2f/myuser", PermArgs, [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/queues/%2f/bar-queue", QArgs, "myuser", "myuser",
              ?NOT_AUTHORISED),
@@ -669,35 +730,37 @@ permissions_amqp_test(Config) ->
     http_delete(Config, "/users/myuser", ?NO_CONTENT),
     passed.
 
-get_conn(Username, Password) ->
+get_conn(Config, Username, Password) ->
+    Port       = rabbit_ct_broker_helpers:get_node_config(Config, 0, tcp_port_amqp),
     {ok, Conn} = amqp_connection:start(#amqp_params_network{
+                                          port     = Port,
 					  username = list_to_binary(Username),
 					  password = list_to_binary(Password)}),
     LocalPort = local_port(Conn),
     ConnPath = rabbit_misc:format(
-                 "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A5672",
-                 [LocalPort]),
+                 "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w",
+                 [LocalPort, Port]),
     ChPath = rabbit_misc:format(
-               "/channels/127.0.0.1%3A~w%20->%20127.0.0.1%3A5672%20(1)",
-               [LocalPort]),
+               "/channels/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w%20(1)",
+               [LocalPort, Port]),
     ConnChPath = rabbit_misc:format(
-                   "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A5672/channels",
-                   [LocalPort]),
+                   "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w/channels",
+                   [LocalPort, Port]),
     {Conn, ConnPath, ChPath, ConnChPath}.
 
 permissions_connection_channel_consumer_test(Config) ->
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
     http_put(Config, "/users/user", [{password, <<"user">>},
-                             {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/permissions/%2f/user", PermArgs, [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/monitor", [{password, <<"monitor">>},
-                                {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/permissions/%2f/monitor", PermArgs, [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/queues/%2f/test", [], [?CREATED, ?NO_CONTENT]),
 
-    {Conn1, UserConn, UserCh, UserConnCh} = get_conn("user", "user"),
-    {Conn2, MonConn, MonCh, MonConnCh} = get_conn("monitor", "monitor"),
-    {Conn3, AdmConn, AdmCh, AdmConnCh} = get_conn("guest", "guest"),
+    {Conn1, UserConn, UserCh, UserConnCh} = get_conn(Config, "user", "user"),
+    {Conn2, MonConn, MonCh, MonConnCh} = get_conn(Config, "monitor", "monitor"),
+    {Conn3, AdmConn, AdmCh, AdmConnCh} = get_conn(Config, "guest", "guest"),
     {ok, Ch1} = amqp_connection:open_channel(Conn1),
     {ok, Ch2} = amqp_connection:open_channel(Conn2),
     {ok, Ch3} = amqp_connection:open_channel(Conn3),
@@ -750,7 +813,7 @@ permissions_connection_channel_consumer_test(Config) ->
 
 consumers_test(Config) ->
     http_put(Config, "/queues/%2f/test", [], [?CREATED, ?NO_CONTENT]),
-    {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn("guest", "guest"),
+    {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn(Config, "guest", "guest"),
     {ok, Ch} = amqp_connection:open_channel(Conn),
     amqp_channel:subscribe(
       Ch, #'basic.consume'{queue        = <<"test">>,
@@ -956,7 +1019,7 @@ definitions_vhost_test(Config) ->
     passed.
 
 definitions_password_test(Config) ->
-    % Import definitions from 3.5.x
+                                                % Import definitions from 3.5.x
     Config35 = [{rabbit_version, <<"3.5.4">>},
                 {users, [[{name,          <<"myuser">>},
                           {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
@@ -1230,9 +1293,9 @@ exchanges_pagination_test(Config) ->
 		], proplists:get_value(items, ByName)),
 
 
-    RegExByName = http_get(Config, 
-		    "/exchanges?page=1&page_size=2&name=^(?=^reg)&use_regex=true",
-		    ?OK),
+    RegExByName = http_get(Config,
+                           "/exchanges?page=1&page_size=2&name=^(?=^reg)&use_regex=true",
+                           ?OK),
     ?assertEqual(19, proplists:get_value(total_count, RegExByName)),
     ?assertEqual(1, proplists:get_value(filtered_count, RegExByName)),
     ?assertEqual(1, proplists:get_value(item_count, RegExByName)),
@@ -1258,7 +1321,7 @@ exchanges_pagination_test(Config) ->
 
 exchanges_pagination_permissions_test(Config) ->
     http_put(Config, "/users/admin",   [{password, <<"admin">>},
-				{tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
     Perms = [{configure, <<".*">>},
 	     {write,     <<".*">>},
 	     {read,      <<".*">>}],
@@ -1331,9 +1394,9 @@ queue_pagination_test(Config) ->
 		], proplists:get_value(items, FirstPage)),
 
 
-    ReverseSortedByName = http_get(Config, 
-		    "/queues?page=2&page_size=2&sort=name&sort_reverse=true",
-		    ?OK),
+    ReverseSortedByName = http_get(Config,
+                                   "/queues?page=2&page_size=2&sort=name&sort_reverse=true",
+                                   ?OK),
     ?assertEqual(4, proplists:get_value(total_count, ReverseSortedByName)),
     ?assertEqual(4, proplists:get_value(filtered_count, ReverseSortedByName)),
     ?assertEqual(2, proplists:get_value(item_count, ReverseSortedByName)),
@@ -1356,9 +1419,9 @@ queue_pagination_test(Config) ->
 		 [{name, <<"reg_test3">>}, {vhost, <<"vh1">>}]
 		], proplists:get_value(items, ByName)),
 
-    RegExByName = http_get(Config, 
-		    "/queues?page=1&page_size=2&name=^(?=^reg)&use_regex=true",
-		    ?OK),
+    RegExByName = http_get(Config,
+                           "/queues?page=1&page_size=2&name=^(?=^reg)&use_regex=true",
+                           ?OK),
     ?assertEqual(4, proplists:get_value(total_count, RegExByName)),
     ?assertEqual(1, proplists:get_value(filtered_count, RegExByName)),
     ?assertEqual(1, proplists:get_value(item_count, RegExByName)),
@@ -1384,7 +1447,7 @@ queue_pagination_test(Config) ->
 
 queues_pagination_permissions_test(Config) ->
     http_put(Config, "/users/admin",   [{password, <<"admin">>},
-				{tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
     Perms = [{configure, <<".*">>},
 	     {write,     <<".*">>},
 	     {read,      <<".*">>}],
@@ -1572,9 +1635,9 @@ get_test(Config) ->
     Publish(<<"3aaa">>),
     amqp_connection:close(Conn),
     [Msg] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                                  {count,    1},
-                                                  {encoding, auto},
-                                                  {truncate, 1}], ?OK),
+                                                          {count,    1},
+                                                          {encoding, auto},
+                                                          {truncate, 1}], ?OK),
     false         = pget(redelivered, Msg),
     <<>>          = pget(exchange,    Msg),
     <<"myqueue">> = pget(routing_key, Msg),
@@ -1584,22 +1647,22 @@ get_test(Config) ->
         pget(headers, pget(properties, Msg)),
 
     [M2, M3] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  true},
-                                                     {count,    5},
-                                                     {encoding, auto}], ?OK),
+                                                             {count,    5},
+                                                             {encoding, auto}], ?OK),
     <<"2aaa">> = pget(payload, M2),
     <<"3aaa">> = pget(payload, M3),
     2 = length(http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                                     {count,    5},
-                                                     {encoding, auto}], ?OK)),
+                                                             {count,    5},
+                                                             {encoding, auto}], ?OK)),
     [] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                               {count,    5},
-                                               {encoding, auto}], ?OK),
+                                                       {count,    5},
+                                                       {encoding, auto}], ?OK),
     http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
     passed.
 
 get_fail_test(Config) ->
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                               {tags, <<"management">>}], ?NO_CONTENT),
+                                       {tags, <<"management">>}], ?NO_CONTENT),
     http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
     http_post(Config, "/queues/%2f/myqueue/get",
               [{requeue,  false},
@@ -1616,13 +1679,13 @@ publish_test(Config) ->
     ?assertEqual([{routed, true}],
                  http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, ?OK)),
     [Msg2] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                                   {count,    1},
-                                                   {encoding, auto}], ?OK),
+                                                           {count,    1},
+                                                           {encoding, auto}], ?OK),
     assert_item(Msg, Msg2),
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg2, ?OK),
     [Msg3] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                                   {count,    1},
-                                                   {encoding, auto}], ?OK),
+                                                           {count,    1},
+                                                           {encoding, auto}], ?OK),
     assert_item(Msg, Msg3),
     http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
     passed.
@@ -1653,7 +1716,7 @@ publish_fail_test(Config) ->
     Msg = msg(<<"myqueue">>, [], <<"Hello world">>),
     http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                               {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, "myuser", "password",
               ?NOT_AUTHORISED),
     Msg2 = [{exchange,         <<"">>},
@@ -1689,8 +1752,8 @@ publish_base64_test(Config) ->
     http_post(Config, "/exchanges/%2f/amq.default/publish", BadMsg1, ?BAD_REQUEST),
     http_post(Config, "/exchanges/%2f/amq.default/publish", BadMsg2, ?BAD_REQUEST),
     [Msg2] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
-                                                   {count,    1},
-                                                   {encoding, auto}], ?OK),
+                                                           {count,    1},
+                                                           {encoding, auto}], ?OK),
     ?assertEqual(<<"abcd">>, pget(payload, Msg2)),
     http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
     passed.
@@ -1710,7 +1773,7 @@ if_empty_unused_test(Config) ->
     http_delete(Config, "/exchanges/%2f/test?if-unused=true", ?BAD_REQUEST),
     http_delete(Config, "/queues/%2f/test/contents", ?NO_CONTENT),
 
-    {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn("guest", "guest"),
+    {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn(Config, "guest", "guest"),
     {ok, Ch} = amqp_connection:open_channel(Conn),
     amqp_channel:subscribe(Ch, #'basic.consume'{queue = <<"test">> }, self()),
     http_delete(Config, "/queues/%2f/test?if-unused=true", ?BAD_REQUEST),
@@ -1770,14 +1833,14 @@ policy_test(Config) ->
                   {pattern,    <<".*">>},
                   {definition, [{testeven,[1,2,3,4]}]},
                   {priority,   10}],
-    http_put(Config, 
-      "/policies/%2f/policy_pos",
-      lists:keydelete(key, 1, PolicyPos),
-      [?CREATED, ?NO_CONTENT]),
-    http_put(Config, 
-      "/policies/%2f/policy_even",
-      lists:keydelete(key, 1, PolicyEven),
-      [?CREATED, ?NO_CONTENT]),
+    http_put(Config,
+             "/policies/%2f/policy_pos",
+             lists:keydelete(key, 1, PolicyPos),
+             [?CREATED, ?NO_CONTENT]),
+    http_put(Config,
+             "/policies/%2f/policy_even",
+             lists:keydelete(key, 1, PolicyEven),
+             [?CREATED, ?NO_CONTENT]),
     assert_item(PolicyPos,  http_get(Config, "/policies/%2f/policy_pos",  ?OK)),
     assert_item(PolicyEven, http_get(Config, "/policies/%2f/policy_even", ?OK)),
     List = [PolicyPos, PolicyEven],
@@ -1795,13 +1858,13 @@ policy_permissions_test(Config) ->
     rabbit_runtime_parameters_test:register(),
 
     http_put(Config, "/users/admin",  [{password, <<"admin">>},
-                               {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/mon",    [{password, <<"mon">>},
-                               {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/policy", [{password, <<"policy">>},
-                               {tags, <<"policymaker">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"policymaker">>}], [?CREATED, ?NO_CONTENT]),
     http_put(Config, "/users/mgmt",   [{password, <<"mgmt">>},
-                               {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
     Perms = [{configure, <<".*">>},
              {write,     <<".*">>},
              {read,      <<".*">>}],
@@ -1821,8 +1884,8 @@ policy_permissions_test(Config) ->
     Pos = fun (U) ->
                   Expected = case U of "admin" -> [?CREATED, ?NO_CONTENT]; _ -> ?NO_CONTENT end,
                   http_put(Config, "/policies/v/HA",        Policy, U, U, Expected),
-                  http_put(Config, 
-                    "/parameters/test/v/good",       Param, U, U, ?NO_CONTENT),
+                  http_put(Config,
+                           "/parameters/test/v/good",       Param, U, U, ?NO_CONTENT),
                   1 = length(http_get(Config, "/policies",          U, U, ?OK)),
                   1 = length(http_get(Config, "/parameters/test",   U, U, ?OK)),
                   1 = length(http_get(Config, "/parameters",        U, U, ?OK)),
@@ -1833,10 +1896,10 @@ policy_permissions_test(Config) ->
           end,
     Neg = fun (U) ->
                   http_put(Config, "/policies/v/HA",    Policy, U, U, ?NOT_AUTHORISED),
-                  http_put(Config, 
-                    "/parameters/test/v/good",   Param, U, U, ?NOT_AUTHORISED),
-                  http_put(Config, 
-                    "/parameters/test/v/admin",  Param, U, U, ?NOT_AUTHORISED),
+                  http_put(Config,
+                           "/parameters/test/v/good",   Param, U, U, ?NOT_AUTHORISED),
+                  http_put(Config,
+                           "/parameters/test/v/admin",  Param, U, U, ?NOT_AUTHORISED),
                   %% Policies are read-only for management and monitoring.
                   http_get(Config, "/policies",                 U, U, ?OK),
                   http_get(Config, "/policies/v",               U, U, ?OK),
@@ -1849,8 +1912,8 @@ policy_permissions_test(Config) ->
     AlwaysNeg =
         fun (U) ->
                 http_put(Config, "/policies/%2f/HA",  Policy, U, U, ?NOT_AUTHORISED),
-                http_put(Config, 
-                  "/parameters/test/%2f/good", Param, U, U, ?NOT_AUTHORISED),
+                http_put(Config,
+                         "/parameters/test/%2f/good", Param, U, U, ?NOT_AUTHORISED),
                 http_get(Config, "/policies/%2f/HA",          U, U, ?NOT_AUTHORISED),
                 http_get(Config, "/parameters/test/%2f/good", U, U, ?NOT_AUTHORISED)
         end,
@@ -1876,9 +1939,9 @@ policy_permissions_test(Config) ->
 
 issue67_test(Config)->
     {ok, {{_, 401, _}, Headers, _}} = req(Config, get, "/queues",
-                        [auth_header("user_no_access", "password_no_access")]),
+                                          [auth_header("user_no_access", "password_no_access")]),
     ?assertEqual("application/json",
-      proplists:get_value("content-type",Headers)),
+                 proplists:get_value("content-type",Headers)),
     passed.
 
 extensions_test(Config) ->
@@ -1895,7 +1958,7 @@ cors_test(Config) ->
     application:set_env(rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]),
     %% We should only receive allow-origin and allow-credentials from GET.
     {ok, {_, HdGetCORS, _}} = req(Config, get, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+                                  [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
     true = lists:keymember("access-control-allow-origin", 1, HdGetCORS),
     true = lists:keymember("access-control-allow-credentials", 1, HdGetCORS),
     false = lists:keymember("access-control-expose-headers", 1, HdGetCORS),
@@ -1904,7 +1967,7 @@ cors_test(Config) ->
     false = lists:keymember("access-control-allow-headers", 1, HdGetCORS),
     %% We should receive allow-origin, allow-credentials and allow-methods from OPTIONS.
     {ok, {_, HdOptionsCORS, _}} = req(Config, options, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+                                      [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
     true = lists:keymember("access-control-allow-origin", 1, HdOptionsCORS),
     true = lists:keymember("access-control-allow-credentials", 1, HdOptionsCORS),
     false = lists:keymember("access-control-expose-headers", 1, HdOptionsCORS),
@@ -1913,15 +1976,15 @@ cors_test(Config) ->
     false = lists:keymember("access-control-allow-headers", 1, HdOptionsCORS),
     %% We should receive allow-headers when request-headers is sent.
     {ok, {_, HdAllowHeadersCORS, _}} = req(Config, options, "/overview",
-        [{"origin", "http://rabbitmq.com"},
-         auth_header("guest", "guest"),
-         {"access-control-request-headers", "x-piggy-bank"}]),
+                                           [{"origin", "http://rabbitmq.com"},
+                                            auth_header("guest", "guest"),
+                                            {"access-control-request-headers", "x-piggy-bank"}]),
     {_, "x-piggy-bank"} = lists:keyfind("access-control-allow-headers", 1, HdAllowHeadersCORS),
     %% Disable preflight request caching.
     application:set_env(rabbitmq_management, cors_max_age, undefined),
     %% We shouldn't receive max-age anymore.
     {ok, {_, HdNoMaxAgeCORS, _}} = req(Config, options, "/overview",
-        [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
+                                       [{"origin", "http://rabbitmq.com"}, auth_header("guest", "guest")]),
     false = lists:keymember("access-control-max-age", 1, HdNoMaxAgeCORS),
     %% Disable CORS again.
     application:set_env(rabbitmq_management, cors_allow_origins, []),
@@ -2039,9 +2102,10 @@ req(Config, Type, Path, Headers, Body) ->
                   ?HTTPC_OPTS, []).
 
 uri_base_from(Config) ->
-    "http://localhost:" ++
-        integer_to_list(rabbit_ct_broker_helpers:get_node_config(Config, 0, tcp_port_mgmt)) ++
-        "/api".
+    binary_to_list(
+      rabbit_mgmt_format:print(
+        "http://localhost:~w/api",
+        [mgmt_port(Config)])).
 
 decode(?OK, _Headers,  ResBody) -> cleanup(mochijson2:decode(ResBody));
 decode(_,    Headers, _ResBody) -> Headers.
@@ -2059,17 +2123,17 @@ auth_header(Username, Password) ->
     {"Authorization",
      "Basic " ++ binary_to_list(base64:encode(Username ++ ":" ++ Password))}.
 
-spawn_invalid(0) ->
+spawn_invalid(Config, 0) ->
     ok;
-spawn_invalid(N) ->
+spawn_invalid(Config, N) ->
     Self = self(),
     spawn(fun() ->
                   timer:sleep(random:uniform(250)),
-                  {ok, Sock} = gen_tcp:connect("localhost", 5672, [list]),
+                  {ok, Sock} = gen_tcp:connect("localhost", amqp_port(Config), [list]),
                   ok = gen_tcp:send(Sock, "Some Data"),
                   receive_msg(Self)
           end),
-    spawn_invalid(N-1).
+    spawn_invalid(Config, N-1).
 
 receive_msg(Self) ->
     receive
@@ -2089,3 +2153,12 @@ wait_for_answers(N) ->
         no_reply ->
             throw(no_reply)
     end.
+
+amqp_port(Config) ->
+    config_port(Config, tcp_port_amqp).
+
+mgmt_port(Config) ->
+    config_port(Config, tcp_port_mgmt).
+
+config_port(Config, PortKey) ->
+    rabbit_ct_broker_helpers:get_node_config(Config, 0, PortKey).
