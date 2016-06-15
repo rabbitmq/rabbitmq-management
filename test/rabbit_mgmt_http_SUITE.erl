@@ -17,23 +17,20 @@
 -module(rabbit_mgmt_http_SUITE).
 
 -include_lib("common_test/include/ct.hrl").
--include_lib("eunit/include/eunit.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("rabbitmq_management/include/rabbit_mgmt_test.hrl").
 
 -import(rabbit_ct_client_helpers, [close_connection/1, close_channel/1, open_unmanaged_connection/1]).
 -import(rabbit_mgmt_test_util, [assert_list/2, assert_item/2, test_item/2,
-                                assert_keys/2, assert_no_keys/2]).
+                                assert_keys/2, assert_no_keys/2,
+                                http_get/2, http_get/3, http_get/5,
+                                http_put/4, http_put/5, http_put/6,
+                                http_post/4, http_post/5, http_post/6,
+                                http_delete/3, http_delete/5,
+                                http_put_raw/4, http_post_accept_json/4,
+                                req/4, auth_header/2,
+                                amqp_port/1, mgmt_port/1]).
 
 -import(rabbit_misc, [pget/2]).
-
--define(OK, 200).
--define(CREATED, 201).
--define(NO_CONTENT, 204).
--define(BAD_REQUEST, 400).
--define(NOT_AUTHORISED, 401).
-%% -define(NOT_FOUND, 404). This is already defined by amqp_client.hrl
-%% httpc seems to get racy when using HTTP 1.1
--define(HTTPC_OPTS, [{version, "HTTP/1.0"}]).
 
 -compile(export_all).
 
@@ -2016,119 +2013,6 @@ local_port(Conn) ->
     {ok, Port} = inet:port(Sock),
     Port.
 
-
-http_get(Config, Path) ->
-    http_get(Config, Path, ?OK).
-
-http_get(Config, Path, CodeExp) ->
-    http_get(Config, Path, "guest", "guest", CodeExp).
-
-http_get(Config, Path, User, Pass, CodeExp) ->
-    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
-        req(Config, get, Path, [auth_header(User, Pass)]),
-    assert_code(CodeExp, CodeAct, "GET", Path, ResBody),
-    decode(CodeExp, Headers, ResBody).
-
-http_put(Config, Path, List, CodeExp) ->
-    http_put_raw(Config, Path, format_for_upload(List), CodeExp).
-
-http_put(Config, Path, List, User, Pass, CodeExp) ->
-    http_put_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp).
-
-http_post(Config, Path, List, CodeExp) ->
-    http_post_raw(Config, Path, format_for_upload(List), CodeExp).
-
-http_post(Config, Path, List, User, Pass, CodeExp) ->
-    http_post_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp).
-
-http_post_accept_json(Config, Path, List, CodeExp) ->
-    http_post_accept_json(Config, Path, List, "guest", "guest", CodeExp).
-
-http_post_accept_json(Config, Path, List, User, Pass, CodeExp) ->
-    http_post_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp,
-		  [{"Accept", "application/json"}]).
-
-format_for_upload(none) ->
-    <<"">>;
-format_for_upload(List) ->
-    iolist_to_binary(mochijson2:encode({struct, List})).
-
-http_put_raw(Config, Path, Body, CodeExp) ->
-    http_upload_raw(Config, put, Path, Body, "guest", "guest", CodeExp, []).
-
-http_put_raw(Config, Path, Body, User, Pass, CodeExp) ->
-    http_upload_raw(Config, put, Path, Body, User, Pass, CodeExp, []).
-
-
-http_post_raw(Config, Path, Body, CodeExp) ->
-    http_upload_raw(Config, post, Path, Body, "guest", "guest", CodeExp, []).
-
-http_post_raw(Config, Path, Body, User, Pass, CodeExp) ->
-    http_upload_raw(Config, post, Path, Body, User, Pass, CodeExp, []).
-
-http_post_raw(Config, Path, Body, User, Pass, CodeExp, MoreHeaders) ->
-    http_upload_raw(Config, post, Path, Body, User, Pass, CodeExp, MoreHeaders).
-
-
-http_upload_raw(Config, Type, Path, Body, User, Pass, CodeExp, MoreHeaders) ->
-    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
-	req(Config, Type, Path, [auth_header(User, Pass)] ++ MoreHeaders, Body),
-    assert_code(CodeExp, CodeAct, Type, Path, ResBody),
-    decode(CodeExp, Headers, ResBody).
-
-http_delete(Config, Path, CodeExp) ->
-    http_delete(Config, Path, "guest", "guest", CodeExp).
-
-http_delete(Config, Path, User, Pass, CodeExp) ->
-    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
-        req(Config, delete, Path, [auth_header(User, Pass)]),
-    assert_code(CodeExp, CodeAct, "DELETE", Path, ResBody),
-    decode(CodeExp, Headers, ResBody).
-
-assert_code(CodesExpected, CodeAct, Type, Path, Body) when is_list(CodesExpected) ->
-    case lists:member(CodeAct, CodesExpected) of
-        true ->
-            ok;
-        false ->
-            throw({expected, CodesExpected, got, CodeAct, type, Type,
-                   path, Path, body, Body})
-    end;
-assert_code(CodeExp, CodeAct, Type, Path, Body) ->
-    case CodeExp of
-        CodeAct -> ok;
-        _       -> throw({expected, CodeExp, got, CodeAct, type, Type,
-                          path, Path, body, Body})
-    end.
-
-req(Config, Type, Path, Headers) ->
-    httpc:request(Type, {uri_base_from(Config) ++ Path, Headers}, ?HTTPC_OPTS, []).
-
-req(Config, Type, Path, Headers, Body) ->
-    httpc:request(Type, {uri_base_from(Config) ++ Path, Headers, "application/json", Body},
-                  ?HTTPC_OPTS, []).
-
-uri_base_from(Config) ->
-    binary_to_list(
-      rabbit_mgmt_format:print(
-        "http://localhost:~w/api",
-        [mgmt_port(Config)])).
-
-decode(?OK, _Headers,  ResBody) -> cleanup(mochijson2:decode(ResBody));
-decode(_,    Headers, _ResBody) -> Headers.
-
-cleanup(L) when is_list(L) ->
-    [cleanup(I) || I <- L];
-cleanup({struct, I}) ->
-    cleanup(I);
-cleanup({K, V}) when is_binary(K) ->
-    {list_to_atom(binary_to_list(K)), cleanup(V)};
-cleanup(I) ->
-    I.
-
-auth_header(Username, Password) ->
-    {"Authorization",
-     "Basic " ++ binary_to_list(base64:encode(Username ++ ":" ++ Password))}.
-
 spawn_invalid(_Config, 0) ->
     ok;
 spawn_invalid(Config, N) ->
@@ -2159,12 +2043,3 @@ wait_for_answers(N) ->
         no_reply ->
             throw(no_reply)
     end.
-
-amqp_port(Config) ->
-    config_port(Config, tcp_port_amqp).
-
-mgmt_port(Config) ->
-    config_port(Config, tcp_port_mgmt).
-
-config_port(Config, PortKey) ->
-    rabbit_ct_broker_helpers:get_node_config(Config, 0, PortKey).

@@ -16,8 +16,131 @@
 
 -module(rabbit_mgmt_test_util).
 
--export([assert_list/2, assert_item/2, test_item/2,
-         assert_keys/2, assert_no_keys/2]).
+-include_lib("rabbitmq_management/include/rabbit_mgmt_test.hrl").
+
+-compile(export_all).
+
+
+http_get(Config, Path) ->
+    http_get(Config, Path, ?OK).
+
+http_get(Config, Path, CodeExp) ->
+    http_get(Config, Path, "guest", "guest", CodeExp).
+
+http_get(Config, Path, User, Pass, CodeExp) ->
+    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
+        req(Config, get, Path, [auth_header(User, Pass)]),
+    assert_code(CodeExp, CodeAct, "GET", Path, ResBody),
+    decode(CodeExp, Headers, ResBody).
+
+http_put(Config, Path, List, CodeExp) ->
+    http_put_raw(Config, Path, format_for_upload(List), CodeExp).
+
+http_put(Config, Path, List, User, Pass, CodeExp) ->
+    http_put_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp).
+
+http_post(Config, Path, List, CodeExp) ->
+    http_post_raw(Config, Path, format_for_upload(List), CodeExp).
+
+http_post(Config, Path, List, User, Pass, CodeExp) ->
+    http_post_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp).
+
+http_post_accept_json(Config, Path, List, CodeExp) ->
+    http_post_accept_json(Config, Path, List, "guest", "guest", CodeExp).
+
+http_post_accept_json(Config, Path, List, User, Pass, CodeExp) ->
+    http_post_raw(Config, Path, format_for_upload(List), User, Pass, CodeExp,
+		  [{"Accept", "application/json"}]).
+
+req(Config, Type, Path, Headers) ->
+    httpc:request(Type, {uri_base_from(Config) ++ Path, Headers}, ?HTTPC_OPTS, []).
+
+req(Config, Type, Path, Headers, Body) ->
+    httpc:request(Type, {uri_base_from(Config) ++ Path, Headers, "application/json", Body},
+                  ?HTTPC_OPTS, []).
+
+uri_base_from(Config) ->
+    binary_to_list(
+      rabbit_mgmt_format:print(
+        "http://localhost:~w/api",
+        [mgmt_port(Config)])).
+
+auth_header(Username, Password) ->
+    {"Authorization",
+     "Basic " ++ binary_to_list(base64:encode(Username ++ ":" ++ Password))}.
+
+amqp_port(Config) ->
+    config_port(Config, tcp_port_amqp).
+
+mgmt_port(Config) ->
+    config_port(Config, tcp_port_mgmt).
+
+config_port(Config, PortKey) ->
+    rabbit_ct_broker_helpers:get_node_config(Config, 0, PortKey).
+
+http_put_raw(Config, Path, Body, CodeExp) ->
+    http_upload_raw(Config, put, Path, Body, "guest", "guest", CodeExp, []).
+
+http_put_raw(Config, Path, Body, User, Pass, CodeExp) ->
+    http_upload_raw(Config, put, Path, Body, User, Pass, CodeExp, []).
+
+
+http_post_raw(Config, Path, Body, CodeExp) ->
+    http_upload_raw(Config, post, Path, Body, "guest", "guest", CodeExp, []).
+
+http_post_raw(Config, Path, Body, User, Pass, CodeExp) ->
+    http_upload_raw(Config, post, Path, Body, User, Pass, CodeExp, []).
+
+http_post_raw(Config, Path, Body, User, Pass, CodeExp, MoreHeaders) ->
+    http_upload_raw(Config, post, Path, Body, User, Pass, CodeExp, MoreHeaders).
+
+
+http_upload_raw(Config, Type, Path, Body, User, Pass, CodeExp, MoreHeaders) ->
+    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
+	req(Config, Type, Path, [auth_header(User, Pass)] ++ MoreHeaders, Body),
+    assert_code(CodeExp, CodeAct, Type, Path, ResBody),
+    decode(CodeExp, Headers, ResBody).
+
+http_delete(Config, Path, CodeExp) ->
+    http_delete(Config, Path, "guest", "guest", CodeExp).
+
+http_delete(Config, Path, User, Pass, CodeExp) ->
+    {ok, {{_HTTP, CodeAct, _}, Headers, ResBody}} =
+        req(Config, delete, Path, [auth_header(User, Pass)]),
+    assert_code(CodeExp, CodeAct, "DELETE", Path, ResBody),
+    decode(CodeExp, Headers, ResBody).
+
+format_for_upload(none) ->
+    <<"">>;
+format_for_upload(List) ->
+    iolist_to_binary(mochijson2:encode({struct, List})).
+
+assert_code(CodesExpected, CodeAct, Type, Path, Body) when is_list(CodesExpected) ->
+    case lists:member(CodeAct, CodesExpected) of
+        true ->
+            ok;
+        false ->
+            throw({expected, CodesExpected, got, CodeAct, type, Type,
+                   path, Path, body, Body})
+    end;
+assert_code(CodeExp, CodeAct, Type, Path, Body) ->
+    case CodeExp of
+        CodeAct -> ok;
+        _       -> throw({expected, CodeExp, got, CodeAct, type, Type,
+                          path, Path, body, Body})
+    end.
+
+decode(?OK, _Headers,  ResBody) -> cleanup(mochijson2:decode(ResBody));
+decode(_,    Headers, _ResBody) -> Headers.
+
+cleanup(L) when is_list(L) ->
+    [cleanup(I) || I <- L];
+cleanup({struct, I}) ->
+    cleanup(I);
+cleanup({K, V}) when is_binary(K) ->
+    {list_to_atom(binary_to_list(K)), cleanup(V)};
+cleanup(I) ->
+    I.
 
 assert_list(Exp, Act) ->
     case length(Exp) == length(Act) of
