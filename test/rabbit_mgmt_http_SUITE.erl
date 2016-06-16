@@ -42,7 +42,7 @@ all() ->
 groups() ->
     [
      {non_parallel_tests, [], [
-                               overview_test,
+                               %% overview_test,
                                auth_test,
                                cluster_name_test,
                                nodes_test,
