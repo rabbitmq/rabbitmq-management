@@ -110,7 +110,7 @@ wait_for(Config, Path) ->
 wait_for(Config, Path, Keys) ->
     wait_for(Config, Path, Keys, 1000).
 
-wait_for(Config, Path, Keys, 0) ->
+wait_for(_Config, Path, Keys, 0) ->
     exit({timeout, {Path, Keys}});
 
 wait_for(Config, Path, Keys, Count) ->
