@@ -132,12 +132,12 @@ assert_single_node(Exp, Act) ->
     assert_node(Exp, hd(Act)).
 
 assert_nodes(Exp, Act0) ->
-    Act = [read_node(A) || A <- Act0],
+    Act = [extract_node(A) || A <- Act0],
     ?assertEqual(length(Exp), length(Act)),
     [?assert(lists:member(E, Act)) || E <- Exp].
 
 assert_node(Exp, Act) ->
-    ?assertEqual(Exp, read_node(Act)).
+    ?assertEqual(Exp, list_to_atom(binary_to_list(Act))).
 
-read_node(N) ->
+extract_node(N) ->
     list_to_atom(hd(string:tokens(binary_to_list(N), "@"))).
