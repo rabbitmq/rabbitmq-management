@@ -20,8 +20,7 @@
 -include_lib("rabbitmq_management/include/rabbit_mgmt.hrl").
 -include_lib("rabbitmq_management/include/rabbit_mgmt_test.hrl").
 
--import(rabbit_ct_client_helpers, [close_connection/1, close_channel/1,
-                                   open_connection/2, open_connection_and_channel/2]).
+-import(rabbit_ct_client_helpers, [open_unmanaged_connection/2]).
 -import(rabbit_mgmt_test_util, [assert_list/2, assert_item/2, test_item/2,
                                 assert_keys/2, assert_no_keys/2,
                                 http_get/2, http_get/3, http_get/5,
@@ -38,7 +37,11 @@
 
 all() ->
     [
-     {group, non_parallel_tests}
+     {group, non_parallel_tests},
+     %% these tests depend on connection/channel
+     %% state
+     {group, non_parallel_connection_tests},
+     {group, non_parallel_channel_tests}
     ].
 
 groups() ->
@@ -46,11 +49,15 @@ groups() ->
      {non_parallel_tests, [], [
                                queue_coarse_test,
                                connection_coarse_test,
-                               fine_stats_aggregation_test,
                                fine_stats_aggregation_time_test,
-                               connection_stats_gc_test,
-                               channel_stats_gc_test
-                              ]}
+                               fine_stats_aggregation_test
+                              ]},
+     {non_parallel_connection_tests, [], [
+                                          connection_stats_gc_test
+                                         ]},
+     {non_parallel_channel_tests, [], [
+                                       channel_stats_gc_test
+                                      ]}
     ].
 
 %% -------------------------------------------------------------------
@@ -60,6 +67,12 @@ groups() ->
 init_per_suite(Config) ->
     rabbit_ct_helpers:log_environment(),
     inets:start(),
+    Config.
+
+end_per_suite(Config) ->
+    Config.
+
+init_per_group(_, Config) ->
     Config1 = rabbit_ct_helpers:set_config(Config, [
                                                     {rmq_nodename_suffix, ?MODULE}
                                                    ]),
@@ -67,16 +80,10 @@ init_per_suite(Config) ->
                                       rabbit_ct_broker_helpers:setup_steps() ++
                                           rabbit_ct_client_helpers:setup_steps()).
 
-end_per_suite(Config) ->
+end_per_group(_, Config) ->
     rabbit_ct_helpers:run_teardown_steps(Config,
                                          rabbit_ct_client_helpers:teardown_steps() ++
                                              rabbit_ct_broker_helpers:teardown_steps()).
-
-init_per_group(_, Config) ->
-    Config.
-
-end_per_group(_, Config) ->
-    Config.
 
 init_per_testcase(Testcase, Config) ->
     rabbit_ct_helpers:testcase_started(Config, Testcase).
@@ -94,7 +101,7 @@ queue_coarse_test(Config) ->
 
 queue_coarse_test1(_Config) ->
     rabbit_mgmt_event_collector:override_lookups([{exchange, fun dummy_lookup/1},
-                                     {queue,    fun dummy_lookup/1}]),
+                                                  {queue,    fun dummy_lookup/1}]),
     create_q(test, 0),
     create_q(test2, 0),
     stats_q(test, 0, 10),
@@ -137,7 +144,7 @@ fine_stats_aggregation_test(Config) ->
 
 fine_stats_aggregation_test1(_Config) ->
     rabbit_mgmt_event_collector:override_lookups([{exchange, fun dummy_lookup/1},
-                                     {queue,    fun dummy_lookup/1}]),
+                                                  {queue,    fun dummy_lookup/1}]),
     create_ch(ch1, 0),
     create_ch(ch2, 0),
     stats_ch(ch1, 0, [{x, 100}], [{q1, x, 100},
@@ -199,7 +206,7 @@ fine_stats_aggregation_time_test(Config) ->
 
 fine_stats_aggregation_time_test1(_Config) ->
     rabbit_mgmt_event_collector:override_lookups([{exchange, fun dummy_lookup/1},
-                                     {queue,    fun dummy_lookup/1}]),
+                                                  {queue,    fun dummy_lookup/1}]),
     create_ch(ch, 0),
     stats_ch(ch, 0, [{x, 100}], [{q, x, 50}], [{q, 20}]),
     stats_ch(ch, 5, [{x, 110}], [{q, x, 55}], [{q, 22}]),
@@ -221,83 +228,80 @@ fine_stats_aggregation_time_test1(_Config) ->
 
 
 channel_stats_gc_test(Config) ->
-    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, channel_stats_gc_test1, [Config]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 10]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 10]),
+
+    Conn     = open_unmanaged_connection(Config, 0),
+    {ok, Ch} = amqp_connection:open_channel(Conn),
+    %% wait for one default stats emission interval
+    timer:sleep(100),
+
+    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, channel_stats_gc_test1, [Config, Ch]),
+
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 30000]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 5000]),
+
     passed.
 
-channel_stats_gc_test1(Config) ->
+channel_stats_gc_test1(_Config, _Ch) ->
     GcTimeout = 10,
-    application:set_env(rabbitmq_management, process_stats_gc_timeout, GcTimeout),
-    application:set_env(rabbit, collect_statistics_interval, 10),
     GC = rabbit_mgmt_stats_gc:name(channel_stats),
     exit(whereis(GC), restart),
-    OldChannels = rabbit_channel:list(),
     Range = range(0, 1, 1),
-
-    Conn = open_connection(Config, 0),
-    {ok, _Ch}  = amqp_connection:open_channel(Conn),
 
     %% There is a channel.
     wait_for(fun() ->
-        [_] = rabbit_mgmt_db:get_all_channels(Range)
-    end, 1000, 50),
+                     [_ | _] = rabbit_mgmt_db:get_all_channels(Range),
+                         [exit(C, kill) || C <- rabbit_channel:list()],
 
-    [Channel] = rabbit_channel:list() -- OldChannels,
-    exit(Channel, kill),
-
-    %% Channel is still here
-    [_] = rabbit_mgmt_db:get_all_channels(Range),
-    [_] = ets:lookup(channel_stats_key_index, Channel),
+                     %% Some channels are still there
+                     [_ | _] = rabbit_mgmt_db:get_all_channels(Range)
+             end, 1000, 50),
 
     timer:sleep(GcTimeout * 2),
-
     GC ! gc,
+    timer:sleep(1000),
 
-    %% Wait for channel to be GCed
-    wait_for(fun() -> [] = rabbit_mgmt_db:get_all_channels(Range) end,
-             1000, 50),
-    [] = ets:lookup(channel_stats_key_index, Channel),
-
-    application:set_env(rabbitmq_management, process_stats_gc_timeout, 30000),
-    application:set_env(rabbit, collect_statistics_interval, 5000),
-    close_connection(Conn).
+    [] = rabbit_mgmt_db:get_all_channels(Range),
+    [] = ets:tab2list(channel_stats_key_index),
+    ok.
 
 connection_stats_gc_test(Config) ->
-    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, connection_stats_gc_test1, [Config]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 10]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 10]),
+
+    Conn     = open_unmanaged_connection(Config, 0),
+    {ok, Ch} = amqp_connection:open_channel(Conn),
+    %% wait for one default stats emission interval
+    timer:sleep(100),
+
+    %% this test will kill connection process, so no need to close it manually
+    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, connection_stats_gc_test1, [Config, Conn]),
+
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 30000]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 5000]),
+
     passed.
-connection_stats_gc_test1(Config) ->
+connection_stats_gc_test1(_Config, _Conn) ->
     GcTimeout = 10,
-    application:set_env(rabbitmq_management, process_stats_gc_timeout, GcTimeout),
-    application:set_env(rabbit, collect_statistics_interval, 10),
     GC = rabbit_mgmt_stats_gc:name(connection_stats),
     exit(whereis(GC), restart),
-    OldConnections = rabbit_networking:connections(),
     Range = range(0, 1, 1),
-
-    {Conn, _Ch} = open_connection_and_channel(Config, 0),
 
     %% There is a connection.
     wait_for(fun() ->
-        [_] = rabbit_mgmt_db:get_all_connections(Range)
-    end, 1000, 50),
+                     [_ | _] = rabbit_mgmt_db:get_all_connections(Range),
+                     [exit(C, kill) || C <- rabbit_networking:connections()],
 
-    [Connection] = rabbit_networking:connections() -- OldConnections,
-    exit(Connection, kill),
-
-    %% Connection is still here
-    [_] = rabbit_mgmt_db:get_all_connections(Range),
-    [_] = ets:lookup(connection_stats_key_index, Connection),
-
-    timer:sleep(GcTimeout * 2),
-
+                     %% Connection records are not yet GC'ed
+                     [_ | _] = rabbit_mgmt_db:get_all_connections(Range)
+             end, 1000, 50),
+    timer:sleep(GcTimeout * 4),
     GC ! gc,
 
-    %% Wait for connection to be GCed
-    wait_for(fun() -> [] = rabbit_mgmt_db:get_all_connections(Range) end,
-             1000, 50),
-    [] = ets:lookup(connection_stats_key_index, Connection),
-
-    application:set_env(rabbitmq_management, process_stats_gc_timeout, 30000),
-    application:set_env(rabbit, collect_statistics_interval, 5000).
+    timer:sleep(1000),
+    [] = rabbit_mgmt_db:get_all_connections(Range),
+    [] = ets:tab2list(connection_stats_key_index).
 
 wait_for(Fun, Timeout, _Interval) when Timeout =< 0 ->
     Fun();
@@ -306,7 +310,7 @@ wait_for(Fun, Timeout, Interval) ->
         {'EXIT', _} ->
             receive
             after Interval ->
-                wait_for(Fun, Timeout - Interval, Interval)
+                    wait_for(Fun, Timeout - Interval, Interval)
             end;
         _ -> ok
     end.
