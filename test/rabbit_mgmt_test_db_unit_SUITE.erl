@@ -16,29 +16,69 @@
 
 -module(rabbit_mgmt_test_db_unit_SUITE).
 
+-include_lib("common_test/include/ct.hrl").
 -include("rabbit_mgmt.hrl").
 -include("rabbit_mgmt_metrics.hrl").
 -include_lib("eunit/include/eunit.hrl").
+
+-compile(export_all).
 
 %% vhost_stats example
 -define(ID, <<"/test-vhost">>).
 -define(TABLE, aggr_vhost_stats_queue_msg_counts).
 
--compile(export_all).
-
 all() ->
     [
-     %% gc_test,
-     %% format_test,
-     %% format_no_range_test
+     {group, parallel_tests}
     ].
+
+groups() ->
+    [
+     {parallel_tests, [parallel], [
+                                   gc_test,
+                                   format_test,
+                                   format_no_range_test
+                                  ]}
+    ].
+
+%% -------------------------------------------------------------------
+%% Testsuite setup/teardown.
+%% -------------------------------------------------------------------
+
+init_per_suite(Config) ->
+    rabbit_ct_helpers:log_environment(),
+    inets:start(),
+    Config1 = rabbit_ct_helpers:set_config(Config, [
+                                                    {rmq_nodename_suffix, ?MODULE}
+                                                   ]),
+    rabbit_ct_helpers:run_setup_steps(Config1,
+                                      rabbit_ct_broker_helpers:setup_steps() ++
+                                          rabbit_ct_client_helpers:setup_steps()).
+
+end_per_suite(Config) ->
+    rabbit_ct_helpers:run_teardown_steps(Config,
+                                         rabbit_ct_client_helpers:teardown_steps() ++
+                                             rabbit_ct_broker_helpers:teardown_steps()).
+
+init_per_group(_, Config) ->
+    Config.
+
+end_per_group(_, Config) ->
+    Config.
+
+init_per_testcase(Testcase, Config) ->
+    rabbit_ct_helpers:testcase_started(Config, Testcase).
+
+end_per_testcase(Testcase, Config) ->
+    rabbit_ct_helpers:testcase_finished(Config, Testcase).
 
 %% -------------------------------------------------------------------
 %% Testcases.
 %% -------------------------------------------------------------------
 
-
-gc_test() ->
+gc_test(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, gc_test1, [Config]).
+gc_test1(_Config) ->
     T = fun (Before, After) ->
                 Stats = stats(Before),
                 try
@@ -71,7 +111,9 @@ gc_test() ->
       {[], 12}),
     ok.
 
-format_test() ->
+format_test(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, format_test1, [Config]).
+format_test1(_Config) ->
     Interval = 10,
     T = fun ({First, Last, Incr}, Stats, Results) ->
                 Table = stats(Stats),
@@ -119,7 +161,9 @@ format_test() ->
     %% TODO more?
     ok.
 
-format_no_range_test() ->
+format_no_range_test(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, format_no_range_test1, [Config]).
+format_no_range_test1(_Config) ->
     Interval = 10,
     T = fun (Stats, Results) ->
                 Table = stats(Stats),

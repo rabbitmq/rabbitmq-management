@@ -271,7 +271,6 @@ connection_stats_gc_test(Config) ->
     rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 10]),
 
     Conn     = open_unmanaged_connection(Config, 0),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
     %% wait for one default stats emission interval
     timer:sleep(100),
 
