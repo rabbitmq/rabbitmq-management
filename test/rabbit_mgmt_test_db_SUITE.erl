@@ -29,7 +29,7 @@
                                 http_delete/3, http_delete/5,
                                 http_put_raw/4, http_post_accept_json/4,
                                 req/4, auth_header/2,
-                                amqp_port/1, mgmt_port/1]).
+                                amqp_port/1, mgmt_port/1, reset_management_settings/1]).
 
 -import(rabbit_misc, [pget/2]).
 
@@ -37,11 +37,7 @@
 
 all() ->
     [
-     {group, non_parallel_tests},
-     %% these tests depend on connection/channel
-     %% state
-     {group, non_parallel_connection_tests},
-     {group, non_parallel_channel_tests}
+     {group, non_parallel_tests}
     ].
 
 groups() ->
@@ -51,13 +47,7 @@ groups() ->
                                connection_coarse_test,
                                fine_stats_aggregation_time_test,
                                fine_stats_aggregation_test
-                              ]},
-     {non_parallel_connection_tests, [], [
-                                          connection_stats_gc_test
-                                         ]},
-     {non_parallel_channel_tests, [], [
-                                       channel_stats_gc_test
-                                      ]}
+                              ]}
     ].
 
 %% -------------------------------------------------------------------
@@ -78,17 +68,21 @@ init_per_group(_, Config) ->
                                                    ]),
     rabbit_ct_helpers:run_setup_steps(Config1,
                                       rabbit_ct_broker_helpers:setup_steps() ++
-                                          rabbit_ct_client_helpers:setup_steps()).
+                                          rabbit_ct_client_helpers:setup_steps() ++
+                                          [fun rabbit_mgmt_test_util:reset_management_settings/1]).
 
 end_per_group(_, Config) ->
     rabbit_ct_helpers:run_teardown_steps(Config,
+                                         [fun rabbit_mgmt_test_util:reset_management_settings/1] ++
                                          rabbit_ct_client_helpers:teardown_steps() ++
                                              rabbit_ct_broker_helpers:teardown_steps()).
 
 init_per_testcase(Testcase, Config) ->
+    reset_management_settings(Config),
     rabbit_ct_helpers:testcase_started(Config, Testcase).
 
 end_per_testcase(Testcase, Config) ->
+    reset_management_settings(Config),
     rabbit_ct_helpers:testcase_finished(Config, Testcase).
 
 %% -------------------------------------------------------------------
@@ -225,94 +219,6 @@ fine_stats_aggregation_time_test1(_Config) ->
     delete_ch(ch, 1),
     rabbit_mgmt_event_collector:reset_lookups(),
     ok.
-
-
-channel_stats_gc_test(Config) ->
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 10]),
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 10]),
-
-    Conn     = open_unmanaged_connection(Config, 0),
-    {ok, Ch} = amqp_connection:open_channel(Conn),
-    %% wait for one default stats emission interval
-    timer:sleep(100),
-
-    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, channel_stats_gc_test1, [Config, Ch]),
-
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 30000]),
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 5000]),
-
-    passed.
-
-channel_stats_gc_test1(_Config, _Ch) ->
-    GcTimeout = 10,
-    GC = rabbit_mgmt_stats_gc:name(channel_stats),
-    exit(whereis(GC), restart),
-    Range = range(0, 1, 1),
-
-    %% There is a channel.
-    wait_for(fun() ->
-                     [_ | _] = rabbit_mgmt_db:get_all_channels(Range),
-                         [exit(C, kill) || C <- rabbit_channel:list()],
-
-                     %% Some channels are still there
-                     [_ | _] = rabbit_mgmt_db:get_all_channels(Range)
-             end, 1000, 50),
-
-    timer:sleep(GcTimeout * 2),
-    GC ! gc,
-    timer:sleep(1000),
-
-    [] = rabbit_mgmt_db:get_all_channels(Range),
-    [] = ets:tab2list(channel_stats_key_index),
-    ok.
-
-connection_stats_gc_test(Config) ->
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 10]),
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 10]),
-
-    Conn     = open_unmanaged_connection(Config, 0),
-    %% wait for one default stats emission interval
-    timer:sleep(100),
-
-    %% this test will kill connection process, so no need to close it manually
-    rabbit_ct_broker_helpers:rpc(Config, 0, ?MODULE, connection_stats_gc_test1, [Config, Conn]),
-
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 30000]),
-    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 5000]),
-
-    passed.
-connection_stats_gc_test1(_Config, _Conn) ->
-    GcTimeout = 10,
-    GC = rabbit_mgmt_stats_gc:name(connection_stats),
-    exit(whereis(GC), restart),
-    Range = range(0, 1, 1),
-
-    %% There is a connection.
-    wait_for(fun() ->
-                     [_ | _] = rabbit_mgmt_db:get_all_connections(Range),
-                     [exit(C, kill) || C <- rabbit_networking:connections()],
-
-                     %% Connection records are not yet GC'ed
-                     [_ | _] = rabbit_mgmt_db:get_all_connections(Range)
-             end, 1000, 50),
-    timer:sleep(GcTimeout * 4),
-    GC ! gc,
-
-    timer:sleep(1000),
-    [] = rabbit_mgmt_db:get_all_connections(Range),
-    [] = ets:tab2list(connection_stats_key_index).
-
-wait_for(Fun, Timeout, _Interval) when Timeout =< 0 ->
-    Fun();
-wait_for(Fun, Timeout, Interval) ->
-    case catch Fun() of
-        {'EXIT', _} ->
-            receive
-            after Interval ->
-                    wait_for(Fun, Timeout - Interval, Interval)
-            end;
-        _ -> ok
-    end.
 
 assert_fine_stats(m, Type, N, Obj, R) ->
     Act = pget(message_stats, Obj),

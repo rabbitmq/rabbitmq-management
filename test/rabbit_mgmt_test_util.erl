@@ -20,6 +20,10 @@
 
 -compile(export_all).
 
+reset_management_settings(Config) ->
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, process_stats_gc_timeout, 300000]),
+    rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, collect_statistics_interval, 5000]),
+    Config.
 
 http_get(Config, Path) ->
     http_get(Config, Path, ?OK).
