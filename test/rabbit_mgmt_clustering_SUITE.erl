@@ -83,9 +83,9 @@ multi_node_case1_test(Config) ->
     Nodename2 = get_node_config(Config, 1, nodename),
     Policy = [{pattern,    <<".*">>},
               {definition, [{'ha-mode', <<"all">>}]}],
-    http_put(Config, "/policies/%2f/HA", Policy, ?NO_CONTENT),
+    http_put(Config, "/policies/%2f/HA", Policy, {group, '2xx'}),
     QArgs = [{node, list_to_binary(atom_to_list(Nodename2))}],
-    http_put(Config, "/queues/%2f/ha-queue", QArgs, ?NO_CONTENT),
+    http_put(Config, "/queues/%2f/ha-queue", QArgs, {group, '2xx'}),
 
     Q = wait_for(Config, "/queues/%2f/ha-queue"),
     assert_node(Nodename2, pget(node, Q)),
@@ -98,8 +98,8 @@ multi_node_case1_test(Config) ->
     assert_node(Nodename1, pget(node, Q2)),
     assert_single_node(Nodename2, pget(slave_nodes, Q2)),
     assert_single_node(Nodename2, pget(synchronised_slave_nodes, Q2)),
-    http_delete(Config, "/queues/%2f/ha-queue", ?NO_CONTENT),
-    http_delete(Config, "/policies/%2f/HA", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/ha-queue", {group, '2xx'}),
+    http_delete(Config, "/policies/%2f/HA", {group, '2xx'}),
 
     passed.
 

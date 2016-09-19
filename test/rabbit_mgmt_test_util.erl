@@ -119,13 +119,61 @@ format_for_upload(none) ->
 format_for_upload(List) ->
     iolist_to_binary(mochijson2:encode({struct, List})).
 
-assert_code(CodesExpected, CodeAct, Type, Path, Body) when is_list(CodesExpected) ->
+assert_code({one_of, CodesExpected}, CodeAct, Type, Path, Body) when is_list(CodesExpected) ->
     case lists:member(CodeAct, CodesExpected) of
         true ->
             ok;
         false ->
             throw({expected, CodesExpected, got, CodeAct, type, Type,
                    path, Path, body, Body})
+    end;
+assert_code({group, '2xx'} = CodeExp, CodeAct, Type, Path, Body) ->
+    case CodeAct of
+        200 -> ok;
+        201 -> ok;
+        202 -> ok;
+        203 -> ok;
+        204 -> ok;
+        205 -> ok;
+        206 -> ok;
+        _   -> throw({expected, CodeExp, got, CodeAct, type, Type,
+                          path, Path, body, Body})
+    end;
+assert_code({group, '3xx'} = CodeExp, CodeAct, Type, Path, Body) ->
+    case CodeAct of
+        300 -> ok;
+        301 -> ok;
+        302 -> ok;
+        303 -> ok;
+        304 -> ok;
+        305 -> ok;
+        306 -> ok;
+        307 -> ok;
+        _   -> throw({expected, CodeExp, got, CodeAct, type, Type,
+                          path, Path, body, Body})
+    end;
+assert_code({group, '4xx'} = CodeExp, CodeAct, Type, Path, Body) ->
+    case CodeAct of
+        400 -> ok;
+        401 -> ok;
+        402 -> ok;
+        403 -> ok;
+        404 -> ok;
+        405 -> ok;
+        406 -> ok;
+        407 -> ok;
+        408 -> ok;
+        409 -> ok;
+        410 -> ok;
+        411 -> ok;
+        412 -> ok;
+        413 -> ok;
+        414 -> ok;
+        415 -> ok;
+        416 -> ok;
+        417 -> ok;
+        _   -> throw({expected, CodeExp, got, CodeAct, type, Type,
+                          path, Path, body, Body})
     end;
 assert_code(CodeExp, CodeAct, Type, Path, Body) ->
     case CodeExp of

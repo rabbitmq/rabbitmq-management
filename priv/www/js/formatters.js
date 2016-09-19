@@ -78,10 +78,22 @@ function fmt_features(obj) {
 }
 
 function fmt_policy_short(obj) {
-    if (obj.policy != undefined && obj.policy != '') {
+    var policy = obj.policy;
+    if (policy != undefined && policy != '') {
         return '<acronym class="policy" title="Policy: ' +
-            fmt_escape_html(obj.policy) + '">' +
-            fmt_escape_html(obj.policy) + '</acronym> ';
+            fmt_escape_html(policy) + '">' +
+            fmt_escape_html(policy) + '</acronym> ';
+    } else {
+        return '';
+    }
+}
+
+function fmt_op_policy_short(obj) {
+    var op_policy = obj.operator_policy;
+    if (op_policy != undefined && op_policy != '') {
+        return '<acronym class="policy" title="Operator policy: ' +
+            fmt_escape_html(op_policy) + '">' +
+            fmt_escape_html(op_policy) + '</acronym> ';
     } else {
         return '';
     }
@@ -141,6 +153,9 @@ function args_to_features(obj) {
     }
     if (obj.internal != undefined && obj.internal) {
         res['internal'] = true;
+    }
+    if (obj.messages_delayed != undefined){
+        res['messages delayed'] = obj.messages_delayed;
     }
     return res;
 }

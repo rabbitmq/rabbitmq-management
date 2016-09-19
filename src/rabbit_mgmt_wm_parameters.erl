@@ -16,32 +16,26 @@
 
 -module(rabbit_mgmt_wm_parameters).
 
--export([init/1, to_json/2, content_types_provided/2, is_authorized/2,
+-export([init/3, rest_init/2, to_json/2, content_types_provided/2, is_authorized/2,
          resource_exists/2, basic/1]).
--export([finish_request/2, allowed_methods/2]).
--export([encodings_provided/2]).
+-export([variances/2]).
 -export([fix_shovel_publish_properties/1]).
 
 -include("rabbit_mgmt.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 -include_lib("rabbit_common/include/rabbit.hrl").
 
 %%--------------------------------------------------------------------
 
-init(_Config) -> {ok, #context{}}.
+init(_, _, _) -> {upgrade, protocol, cowboy_rest}.
 
-finish_request(ReqData, Context) ->
-    {ok, rabbit_mgmt_cors:set_headers(ReqData, Context), Context}.
+rest_init(Req, _Config) ->
+    {ok, rabbit_mgmt_cors:set_headers(Req, ?MODULE), #context{}}.
 
-allowed_methods(ReqData, Context) ->
-    {['HEAD', 'GET', 'OPTIONS'], ReqData, Context}.
+variances(Req, Context) ->
+    {[<<"accept-encoding">>, <<"origin">>], Req, Context}.
 
 content_types_provided(ReqData, Context) ->
-   {[{"application/json", to_json}], ReqData, Context}.
-
-encodings_provided(ReqData, Context) ->
-    {[{"identity", fun(X) -> X end},
-     {"gzip", fun(X) -> zlib:gzip(X) end}], ReqData, Context}.
+   {[{<<"application/json">>, to_json}], ReqData, Context}.
 
 resource_exists(ReqData, Context) ->
     {case basic(ReqData) of
@@ -58,22 +52,6 @@ is_authorized(ReqData, Context) ->
     rabbit_mgmt_util:is_authorized_policies(ReqData, Context).
 
 %%--------------------------------------------------------------------
-
-basic(ReqData) ->
-    Raw = case rabbit_mgmt_util:id(component, ReqData) of
-              none -> rabbit_runtime_parameters:list();
-              Name -> case rabbit_mgmt_util:vhost(ReqData) of
-                          none      -> rabbit_runtime_parameters:list_component(
-                                         Name);
-                          not_found -> not_found;
-                          VHost     -> rabbit_runtime_parameters:list(
-                                         VHost, Name)
-                      end
-          end,
-    case Raw of
-        not_found -> not_found;
-        _         -> [rabbit_mgmt_format:parameter(fix_shovel_publish_properties(P)) || P <- Raw]
-    end.
 
 %% Hackish fix to make sure we return a JSON object instead of an empty list
 %% when the publish-properties value is empty. Should be removed in 3.7.0
@@ -92,4 +70,20 @@ fix_shovel_publish_properties(P) ->
                 _ -> P
             end;
         _ -> P
+    end.
+
+basic(ReqData) ->
+    Raw = case rabbit_mgmt_util:id(component, ReqData) of
+              none -> rabbit_runtime_parameters:list();
+              Name -> case rabbit_mgmt_util:vhost(ReqData) of
+                          none      -> rabbit_runtime_parameters:list_component(
+                                         Name);
+                          not_found -> not_found;
+                          VHost     -> rabbit_runtime_parameters:list(
+                                         VHost, Name)
+                      end
+          end,
+    case Raw of
+        not_found -> not_found;
+        _         -> [rabbit_mgmt_format:parameter(fix_shovel_publish_properties(P)) || P <- Raw]
     end.

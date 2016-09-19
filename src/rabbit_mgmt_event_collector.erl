@@ -71,7 +71,7 @@ init([Ref]) ->
     {ok, Interval} = application:get_env(rabbit, collect_statistics_interval),
     {ok, RatesMode} = application:get_env(rabbitmq_management, rates_mode),
     rabbit_node_monitor:subscribe(self()),
-    rabbit_log:info("Statistics event collector started.~n"),
+    rabbit_log:info("Statistics event collector started."),
     ?TABLES = [ets:new(Key, [public, set, named_table]) || Key <- ?TABLES],
     %% Index for cleaning up stats of abnormally terminated processes.
     [ets:new(rabbit_mgmt_stats_tables:key_index(Table),

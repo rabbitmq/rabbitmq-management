@@ -42,6 +42,7 @@ groups() ->
              queues,
              bindings,
              policies,
+             operator_policies,
              parameters,
              publish,
              ignore_vhost,
@@ -249,6 +250,14 @@ policies(Config) ->
                                  "vhost", "pattern", "definition"]),
     {ok, _} = run(Config, ["delete", "policy", "name=ha"]).
 
+operator_policies(Config) ->
+    {ok, _} = run(Config, ["declare", "operator_policy", "name=len",
+                           "pattern=.*", "definition={\"max-length\":100}"]),
+    {ok, [["len", "/", ".*", "{\"max-length\": 100}"]]} =
+        run_table(Config, ["list", "operator_policies", "name",
+                                 "vhost", "pattern", "definition"]),
+    {ok, _} = run(Config, ["delete", "operator_policy", "name=len"]).
+
 parameters(Config) ->
     ok = rpc(Config, rabbit_mgmt_runtime_parameters_util, register, []),
     {ok, _} = run(Config, ["declare", "parameter", "component=test",
@@ -272,21 +281,21 @@ publish(Config) ->
                                      []),
 
     M = exp_msg("test", 2, "False", "test_1"),
-    {ok, [M]} = run_table(Config, ["get", "queue=test", "requeue=false"]),
+    {ok, [M]} = run_table(Config, ["get", "queue=test", "ackmode=ack_requeue_false"]),
     M2 = exp_msg("test", 1, "False", "test_2"),
-    {ok, [M2]} = run_table(Config, ["get", "queue=test", "requeue=true"]),
+    {ok, [M2]} = run_table(Config, ["get", "queue=test", "ackmode=ack_requeue_true"]),
     M3 = exp_msg("test", 1, "True", "test_2"),
     {ok, [M3]} = run_table(Config, ["get",
                                     "queue=test",
-                                    "requeue=false"]),
+                                    "ackmode=ack_requeue_false"]),
     M4 = exp_msg("test", 0, "False", "test_3"),
     {ok, [M4]} = run_table(Config, ["get",
                                     "queue=test",
-                                    "requeue=false"]),
+                                    "ackmode=ack_requeue_false"]),
     {ok, _} = run(Config, ["publish", "routing_key=test", "payload=test_4"]),
     Fn = filename:join(?config(priv_dir, Config), "publish_test_4"),
 
-    {ok, _} = run(Config, ["get", "queue=test", "requeue=false", "payload_file=" ++ Fn]),
+    {ok, _} = run(Config, ["get", "queue=test", "ackmode=ack_requeue_false", "payload_file=" ++ Fn]),
     {ok, <<"test_4">>} = file:read_file(Fn),
     {ok, _} = run(Config, ["delete", "queue", "name=test"]).
 

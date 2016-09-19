@@ -149,26 +149,26 @@ overview_test(Config) ->
     %% didn't blow up.
     true = 0 < length(pget(listeners, http_get(Config, "/overview"))),
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                                       {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags,     <<"management">>}], {group, '2xx'}),
     http_get(Config, "/overview", "myuser", "myuser", ?OK),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
 
     passed.
 
 cluster_name_test(Config) ->
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                                       {tags,     <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags,     <<"management">>}], {group, '2xx'}),
     http_put(Config, "/cluster-name", [{name, "foo"}], "myuser", "myuser", ?NOT_AUTHORISED),
-    http_put(Config, "/cluster-name", [{name, "foo"}], ?NO_CONTENT),
+    http_put(Config, "/cluster-name", [{name, "foo"}], {group, '2xx'}),
     [{name, <<"foo">>}] = http_get(Config, "/cluster-name", "myuser", "myuser", ?OK),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     passed.
 
 nodes_test(Config) ->
     http_put(Config, "/users/user", [{password, <<"user">>},
-                                     {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"management">>}], {group, '2xx'}),
     http_put(Config, "/users/monitor", [{password, <<"monitor">>},
-                                        {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"monitoring">>}], {group, '2xx'}),
     DiscNode = [{type, <<"disc">>}, {running, true}],
     assert_list([DiscNode], http_get(Config, "/nodes")),
     assert_list([DiscNode], http_get(Config, "/nodes", "monitor", "monitor", ?OK)),
@@ -178,8 +178,8 @@ nodes_test(Config) ->
     assert_item(DiscNode, http_get(Config, Path, ?OK)),
     assert_item(DiscNode, http_get(Config, Path, "monitor", "monitor", ?OK)),
     http_get(Config, Path, "user", "user", ?NOT_AUTHORISED),
-    http_delete(Config, "/users/user", ?NO_CONTENT),
-    http_delete(Config, "/users/monitor", ?NO_CONTENT),
+    http_delete(Config, "/users/user", {group, '2xx'}),
+    http_delete(Config, "/users/monitor", {group, '2xx'}),
     passed.
 
 memory_test(Config) ->
@@ -254,12 +254,12 @@ assert_percentage(Breakdown) ->
 
 auth_test(Config) ->
     http_put(Config, "/users/user", [{password, <<"user">>},
-                                     {tags, <<"">>}], [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"">>}], {group, '2xx'}),
     test_auth(Config, ?NOT_AUTHORISED, []),
     test_auth(Config, ?NOT_AUTHORISED, [auth_header("user", "user")]),
     test_auth(Config, ?NOT_AUTHORISED, [auth_header("guest", "gust")]),
     test_auth(Config, ?OK, [auth_header("guest", "guest")]),
-    http_delete(Config, "/users/user", ?NO_CONTENT),
+    http_delete(Config, "/users/user", {group, '2xx'}),
     passed.
 
 %% This test is rather over-verbose as we're trying to test understanding of
@@ -267,9 +267,9 @@ auth_test(Config) ->
 vhosts_test(Config) ->
     assert_list([[{name, <<"/">>}]], http_get(Config, "/vhosts")),
     %% Create a new one
-    http_put(Config, "/vhosts/myvhost", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/myvhost", none, {group, '2xx'}),
     %% PUT should be idempotent
-    http_put(Config, "/vhosts/myvhost", none, ?NO_CONTENT),
+    http_put(Config, "/vhosts/myvhost", none, {group, '2xx'}),
     %% Check it's there
     assert_list([[{name, <<"/">>}], [{name, <<"myvhost">>}]],
                 http_get(Config, "/vhosts")),
@@ -277,7 +277,7 @@ vhosts_test(Config) ->
     assert_item([{name, <<"/">>}], http_get(Config, "/vhosts/%2f", ?OK)),
     assert_item([{name, <<"myvhost">>}],http_get(Config, "/vhosts/myvhost")),
     %% Delete it
-    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/myvhost", {group, '2xx'}),
     %% It's not there
     http_get(Config, "/vhosts/myvhost", ?NOT_FOUND),
     http_delete(Config, "/vhosts/myvhost", ?NOT_FOUND),
@@ -285,17 +285,17 @@ vhosts_test(Config) ->
     passed.
 
 vhosts_trace_test(Config) ->
-    http_put(Config, "/vhosts/myvhost", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/myvhost", none, {group, '2xx'}),
     Disabled = [{name,  <<"myvhost">>}, {tracing, false}],
     Enabled  = [{name,  <<"myvhost">>}, {tracing, true}],
     Disabled = http_get(Config, "/vhosts/myvhost"),
-    http_put(Config, "/vhosts/myvhost", [{tracing, true}], ?NO_CONTENT),
+    http_put(Config, "/vhosts/myvhost", [{tracing, true}], {group, '2xx'}),
     Enabled = http_get(Config, "/vhosts/myvhost"),
-    http_put(Config, "/vhosts/myvhost", [{tracing, true}], ?NO_CONTENT),
+    http_put(Config, "/vhosts/myvhost", [{tracing, true}], {group, '2xx'}),
     Enabled = http_get(Config, "/vhosts/myvhost"),
-    http_put(Config, "/vhosts/myvhost", [{tracing, false}], ?NO_CONTENT),
+    http_put(Config, "/vhosts/myvhost", [{tracing, false}], {group, '2xx'}),
     Disabled = http_get(Config, "/vhosts/myvhost"),
-    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/myvhost", {group, '2xx'}),
 
     passed.
 
@@ -305,11 +305,11 @@ users_test(Config) ->
     http_get(Config, "/users/myuser", ?NOT_FOUND),
     http_put_raw(Config, "/users/myuser", "Something not JSON", ?BAD_REQUEST),
     http_put(Config, "/users/myuser", [{flim, <<"flam">>}], ?BAD_REQUEST),
-    http_put(Config, "/users/myuser", [{tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/users/myuser", [{tags, <<"management">>}], {group, '2xx'}),
     http_put(Config, "/users/myuser", [{password_hash, <<"not_hash">>}], ?BAD_REQUEST),
     http_put(Config, "/users/myuser", [{password_hash,
                                         <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
-                                       {tags, <<"management">>}], ?NO_CONTENT),
+                                       {tags, <<"management">>}], {group, '2xx'}),
     assert_item([{name, <<"myuser">>}, {tags, <<"management">>},
                  {password_hash, <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
                  {hashing_algorithm, <<"rabbit_password_hashing_sha256">>}],
@@ -318,33 +318,33 @@ users_test(Config) ->
     http_put(Config, "/users/myuser", [{password_hash,
                                         <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
                                        {hashing_algorithm, <<"rabbit_password_hashing_md5">>},
-                                       {tags, <<"management">>}], ?NO_CONTENT),
+                                       {tags, <<"management">>}], {group, '2xx'}),
     assert_item([{name, <<"myuser">>}, {tags, <<"management">>},
                  {password_hash, <<"IECV6PZI/Invh0DL187KFpkO5Jc=">>},
                  {hashing_algorithm, <<"rabbit_password_hashing_md5">>}],
                 http_get(Config, "/users/myuser")),
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                                       {tags, <<"administrator, foo">>}], ?NO_CONTENT),
+                                       {tags, <<"administrator, foo">>}], {group, '2xx'}),
     assert_item([{name, <<"myuser">>}, {tags, <<"administrator,foo">>}],
                 http_get(Config, "/users/myuser")),
     assert_list([[{name, <<"myuser">>}, {tags, <<"administrator,foo">>}],
                  [{name, <<"guest">>}, {tags, <<"administrator">>}]],
                 http_get(Config, "/users")),
     test_auth(Config, ?OK, [auth_header("myuser", "password")]),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     test_auth(Config, ?NOT_AUTHORISED, [auth_header("myuser", "password")]),
     http_get(Config, "/users/myuser", ?NOT_FOUND),
     passed.
 
 users_legacy_administrator_test(Config) ->
-    http_put(Config, "/users/myuser1", [{administrator, <<"true">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/users/myuser2", [{administrator, <<"false">>}], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/users/myuser1", [{administrator, <<"true">>}], {group, '2xx'}),
+    http_put(Config, "/users/myuser2", [{administrator, <<"false">>}], {group, '2xx'}),
     assert_item([{name, <<"myuser1">>}, {tags, <<"administrator">>}],
                 http_get(Config, "/users/myuser1")),
     assert_item([{name, <<"myuser2">>}, {tags, <<"">>}],
                 http_get(Config, "/users/myuser2")),
-    http_delete(Config, "/users/myuser1", ?NO_CONTENT),
-    http_delete(Config, "/users/myuser2", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser1", {group, '2xx'}),
+    http_delete(Config, "/users/myuser2", {group, '2xx'}),
     passed.
 
 permissions_validation_test(Config) ->
@@ -354,7 +354,7 @@ permissions_validation_test(Config) ->
     http_put(Config, "/permissions/%2f/guest",
              [{configure, <<"[">>}, {write, <<".*">>}, {read, <<".*">>}],
              ?BAD_REQUEST),
-    http_put(Config, "/permissions/%2f/guest", Good, ?NO_CONTENT),
+    http_put(Config, "/permissions/%2f/guest", Good, {group, '2xx'}),
     passed.
 
 permissions_list_test(Config) ->
@@ -366,16 +366,16 @@ permissions_list_test(Config) ->
         http_get(Config, "/permissions"),
 
     http_put(Config, "/users/myuser1", [{password, <<"">>}, {tags, <<"administrator">>}],
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
     http_put(Config, "/users/myuser2", [{password, <<"">>}, {tags, <<"administrator">>}],
-             [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/vhosts/myvhost1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/vhosts/myvhost2", none, [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
+    http_put(Config, "/vhosts/myvhost1", none, {group, '2xx'}),
+    http_put(Config, "/vhosts/myvhost2", none, {group, '2xx'}),
 
     Perms = [{configure, <<"foo">>}, {write, <<"foo">>}, {read, <<"foo">>}],
-    http_put(Config, "/permissions/myvhost1/myuser1", Perms, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/myvhost2/myuser1", Perms, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/myvhost1/myuser2", Perms, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/permissions/myvhost1/myuser1", Perms, {group, '2xx'}),
+    http_put(Config, "/permissions/myvhost2/myuser1", Perms, {group, '2xx'}),
+    http_put(Config, "/permissions/myvhost1/myuser2", Perms, {group, '2xx'}),
 
     4 = length(http_get(Config, "/permissions")),
     2 = length(http_get(Config, "/users/myuser1/permissions")),
@@ -384,20 +384,20 @@ permissions_list_test(Config) ->
     http_get(Config, "/users/notmyuser/permissions", ?NOT_FOUND),
     http_get(Config, "/vhosts/notmyvhost/permissions", ?NOT_FOUND),
 
-    http_delete(Config, "/users/myuser1", ?NO_CONTENT),
-    http_delete(Config, "/users/myuser2", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/myvhost1", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/myvhost2", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser1", {group, '2xx'}),
+    http_delete(Config, "/users/myuser2", {group, '2xx'}),
+    http_delete(Config, "/vhosts/myvhost1", {group, '2xx'}),
+    http_delete(Config, "/vhosts/myvhost2", {group, '2xx'}),
     passed.
 
 permissions_test(Config) ->
     http_put(Config, "/users/myuser", [{password, <<"myuser">>}, {tags, <<"administrator">>}],
-             [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/vhosts/myvhost", none, [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
+    http_put(Config, "/vhosts/myvhost", none, {group, '2xx'}),
 
     http_put(Config, "/permissions/myvhost/myuser",
              [{configure, <<"foo">>}, {write, <<"foo">>}, {read, <<"foo">>}],
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
 
     Permission = [{user,<<"myuser">>},
                   {vhost,<<"myvhost">>},
@@ -412,11 +412,11 @@ permissions_test(Config) ->
     Permission = http_get(Config, "/permissions/myvhost/myuser"),
     assert_list([Permission, Default], http_get(Config, "/permissions")),
     assert_list([Permission], http_get(Config, "/users/myuser/permissions")),
-    http_delete(Config, "/permissions/myvhost/myuser", ?NO_CONTENT),
+    http_delete(Config, "/permissions/myvhost/myuser", {group, '2xx'}),
     http_get(Config, "/permissions/myvhost/myuser", ?NOT_FOUND),
 
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
+    http_delete(Config, "/vhosts/myvhost", {group, '2xx'}),
     passed.
 
 connections_test(Config) ->
@@ -427,7 +427,7 @@ connections_test(Config) ->
                "/connections/127.0.0.1%3A~w%20->%20127.0.0.1%3A~w",
                [LocalPort, amqp_port(Config)])),
     http_get(Config, Path, ?OK),
-    http_delete(Config, Path, ?NO_CONTENT),
+    http_delete(Config, Path, {group, '2xx'}),
     %% TODO rabbit_reader:shutdown/2 returns before the connection is
     %% closed. It may not be worth fixing.
     timer:sleep(200),
@@ -452,15 +452,15 @@ test_auth(Config, Code, Headers) ->
 exchanges_test(Config) ->
     %% Can pass booleans or strings
     Good = [{type, <<"direct">>}, {durable, <<"true">>}],
-    http_put(Config, "/vhosts/myvhost", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/myvhost", none, {group, '2xx'}),
     http_get(Config, "/exchanges/myvhost/foo", ?NOT_AUTHORISED),
     http_put(Config, "/exchanges/myvhost/foo", Good, ?NOT_AUTHORISED),
     http_put(Config, "/permissions/myvhost/guest",
              [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
     http_get(Config, "/exchanges/myvhost/foo", ?NOT_FOUND),
-    http_put(Config, "/exchanges/myvhost/foo", Good, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/exchanges/myvhost/foo", Good, ?NO_CONTENT),
+    http_put(Config, "/exchanges/myvhost/foo", Good, {group, '2xx'}),
+    http_put(Config, "/exchanges/myvhost/foo", Good, {group, '2xx'}),
     http_get(Config, "/exchanges/%2f/foo", ?NOT_FOUND),
     assert_item([{name,<<"foo">>},
                  {vhost,<<"myvhost">>},
@@ -480,18 +480,18 @@ exchanges_test(Config) ->
     http_put(Config, "/exchanges/myvhost/foo", [{type, <<"direct">>}],
              ?BAD_REQUEST),
 
-    http_delete(Config, "/exchanges/myvhost/foo", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/myvhost/foo", {group, '2xx'}),
     http_delete(Config, "/exchanges/myvhost/foo", ?NOT_FOUND),
 
-    http_delete(Config, "/vhosts/myvhost", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/myvhost", {group, '2xx'}),
     http_get(Config, "/exchanges/badvhost", ?NOT_FOUND),
     passed.
 
 queues_test(Config) ->
     Good = [{durable, true}],
     http_get(Config, "/queues/%2f/foo", ?NOT_FOUND),
-    http_put(Config, "/queues/%2f/foo", Good, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/foo", Good, ?NO_CONTENT),
+    http_put(Config, "/queues/%2f/foo", Good, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/foo", Good, {group, '2xx'}),
     http_get(Config, "/queues/%2f/foo", ?OK),
 
     http_put(Config, "/queues/badvhost/bar", Good, ?NOT_FOUND),
@@ -502,7 +502,7 @@ queues_test(Config) ->
              [{durable, false}],
              ?BAD_REQUEST),
 
-    http_put(Config, "/queues/%2f/baz", Good, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/baz", Good, {group, '2xx'}),
 
     Queues = http_get(Config, "/queues/%2f"),
     Queue = http_get(Config, "/queues/%2f/foo"),
@@ -525,8 +525,8 @@ queues_test(Config) ->
                  {exclusive,   false},
                  {arguments,   []}], Queue),
 
-    http_delete(Config, "/queues/%2f/foo", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/baz", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/foo", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/baz", {group, '2xx'}),
     http_delete(Config, "/queues/%2f/foo", ?NOT_FOUND),
     http_get(Config, "/queues/badvhost", ?NOT_FOUND),
     passed.
@@ -534,8 +534,8 @@ queues_test(Config) ->
 queues_well_formed_json_test(Config) ->
     %% TODO This test should be extended to the whole API
     Good = [{durable, true}],
-    http_put(Config, "/queues/%2f/foo", Good, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/baz", Good, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/foo", Good, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/baz", Good, {group, '2xx'}),
 
     Queues = http_get(Config, "/queues/%2f"),
     %% Ensure keys are unique
@@ -544,17 +544,17 @@ queues_well_formed_json_test(Config) ->
 	 Sorted = lists:usort(Q)
      end || Q <- Queues],
 
-    http_delete(Config, "/queues/%2f/foo", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/baz", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/foo", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/baz", {group, '2xx'}),
     passed.
 
 bindings_test(Config) ->
     XArgs = [{type, <<"direct">>}],
     QArgs = [],
-    http_put(Config, "/exchanges/%2f/myexchange", XArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/myexchange", XArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/myqueue", QArgs, {group, '2xx'}),
     BArgs = [{routing_key, <<"routing">>}, {arguments, []}],
-    http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", BArgs, [?CREATED, ?NO_CONTENT]),
+    http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", BArgs, {group, '2xx'}),
     http_get(Config, "/bindings/%2f/e/myexchange/q/myqueue/routing", ?OK),
     http_get(Config, "/bindings/%2f/e/myexchange/q/myqueue/rooting", ?NOT_FOUND),
     Binding =
@@ -580,10 +580,10 @@ bindings_test(Config) ->
                 http_get(Config, "/queues/%2f/myqueue/bindings")),
     assert_list([Binding],
                 http_get(Config, "/exchanges/%2f/myexchange/bindings/source")),
-    http_delete(Config, "/bindings/%2f/e/myexchange/q/myqueue/routing", ?NO_CONTENT),
+    http_delete(Config, "/bindings/%2f/e/myexchange/q/myqueue/routing", {group, '2xx'}),
     http_delete(Config, "/bindings/%2f/e/myexchange/q/myqueue/routing", ?NOT_FOUND),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/myqueue", {group, '2xx'}),
     http_get(Config, "/bindings/badvhost", ?NOT_FOUND),
     http_get(Config, "/bindings/badvhost/myqueue/myexchange/routing", ?NOT_FOUND),
     http_get(Config, "/bindings/%2f/e/myexchange/q/myqueue/routing", ?NOT_FOUND),
@@ -593,13 +593,13 @@ bindings_post_test(Config) ->
     XArgs = [{type, <<"direct">>}],
     QArgs = [],
     BArgs = [{routing_key, <<"routing">>}, {arguments, [{foo, <<"bar">>}]}],
-    http_put(Config, "/exchanges/%2f/myexchange", XArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/myexchange", XArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/myqueue", QArgs, {group, '2xx'}),
     http_post(Config, "/bindings/%2f/e/myexchange/q/badqueue", BArgs, ?NOT_FOUND),
     http_post(Config, "/bindings/%2f/e/badexchange/q/myqueue", BArgs, ?NOT_FOUND),
-    Headers1 = http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    Headers1 = http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", [], {group, '2xx'}),
     "../../../../%2F/e/myexchange/q/myqueue/~" = pget("location", Headers1),
-    Headers2 = http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", BArgs, [?CREATED, ?NO_CONTENT]),
+    Headers2 = http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", BArgs, {group, '2xx'}),
     PropertiesKey = "routing~V4mGFgnPNrdtRmluZIxTDA",
     PropertiesKeyBin = list_to_binary(PropertiesKey),
     "../../../../%2F/e/myexchange/q/myqueue/" ++ PropertiesKey =
@@ -613,16 +613,16 @@ bindings_post_test(Config) ->
      {arguments,[{foo,<<"bar">>}]},
      {properties_key,PropertiesKeyBin}] = http_get(Config, URI, ?OK),
     http_get(Config, URI ++ "x", ?NOT_FOUND),
-    http_delete(Config, URI, ?NO_CONTENT),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, URI, {group, '2xx'}),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/myqueue", {group, '2xx'}),
     passed.
 
 bindings_e2e_test(Config) ->
     BArgs = [{routing_key, <<"routing">>}, {arguments, []}],
     http_post(Config, "/bindings/%2f/e/amq.direct/e/badexchange", BArgs, ?NOT_FOUND),
     http_post(Config, "/bindings/%2f/e/badexchange/e/amq.fanout", BArgs, ?NOT_FOUND),
-    Headers = http_post(Config, "/bindings/%2f/e/amq.direct/e/amq.fanout", BArgs, [?CREATED, ?NO_CONTENT]),
+    Headers = http_post(Config, "/bindings/%2f/e/amq.direct/e/amq.fanout", BArgs, {group, '2xx'}),
     "../../../../%2F/e/amq.direct/e/amq.fanout/routing" =
         pget("location", Headers),
     [{source,<<"amq.direct">>},
@@ -633,8 +633,8 @@ bindings_e2e_test(Config) ->
      {arguments,[]},
      {properties_key,<<"routing">>}] =
         http_get(Config, "/bindings/%2f/e/amq.direct/e/amq.fanout/routing", ?OK),
-    http_delete(Config, "/bindings/%2f/e/amq.direct/e/amq.fanout/routing", ?NO_CONTENT),
-    http_post(Config, "/bindings/%2f/e/amq.direct/e/amq.headers", BArgs, [?CREATED, ?NO_CONTENT]),
+    http_delete(Config, "/bindings/%2f/e/amq.direct/e/amq.fanout/routing", {group, '2xx'}),
+    http_post(Config, "/bindings/%2f/e/amq.direct/e/amq.headers", BArgs, {group, '2xx'}),
     Binding =
         [{source,<<"amq.direct">>},
          {vhost,<<"/">>},
@@ -650,17 +650,17 @@ bindings_e2e_test(Config) ->
                 http_get(Config, "/exchanges/%2f/amq.direct/bindings/source")),
     assert_list([Binding],
                 http_get(Config, "/exchanges/%2f/amq.headers/bindings/destination")),
-    http_delete(Config, "/bindings/%2f/e/amq.direct/e/amq.headers/routing", ?NO_CONTENT),
+    http_delete(Config, "/bindings/%2f/e/amq.direct/e/amq.headers/routing", {group, '2xx'}),
     http_get(Config, "/bindings/%2f/e/amq.direct/e/amq.headers/rooting", ?NOT_FOUND),
     passed.
 
 permissions_administrator_test(Config) ->
     http_put(Config, "/users/isadmin", [{password, <<"isadmin">>},
-                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], {group, '2xx'}),
     http_put(Config, "/users/notadmin", [{password, <<"notadmin">>},
-                                         {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                         {tags, <<"administrator">>}], {group, '2xx'}),
     http_put(Config, "/users/notadmin", [{password, <<"notadmin">>},
-                                         {tags, <<"management">>}], ?NO_CONTENT),
+                                         {tags, <<"management">>}], {group, '2xx'}),
     Test =
         fun(Path) ->
                 http_get(Config, Path, "notadmin", "notadmin", ?NOT_AUTHORISED),
@@ -676,27 +676,27 @@ permissions_administrator_test(Config) ->
     Test("/users/guest/permissions"),
     Test("/permissions"),
     Test("/permissions/%2f/guest"),
-    http_delete(Config, "/users/notadmin", ?NO_CONTENT),
-    http_delete(Config, "/users/isadmin", ?NO_CONTENT),
+    http_delete(Config, "/users/notadmin", {group, '2xx'}),
+    http_delete(Config, "/users/isadmin", {group, '2xx'}),
     passed.
 
 permissions_vhost_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/vhosts/myvhost1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/vhosts/myvhost2", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/myvhost1/myuser", PermArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/myvhost1/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/myvhost2/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], {group, '2xx'}),
+    http_put(Config, "/vhosts/myvhost1", none, {group, '2xx'}),
+    http_put(Config, "/vhosts/myvhost2", none, {group, '2xx'}),
+    http_put(Config, "/permissions/myvhost1/myuser", PermArgs, {group, '2xx'}),
+    http_put(Config, "/permissions/myvhost1/guest", PermArgs, {group, '2xx'}),
+    http_put(Config, "/permissions/myvhost2/guest", PermArgs, {group, '2xx'}),
     assert_list([[{name, <<"/">>}],
                  [{name, <<"myvhost1">>}],
                  [{name, <<"myvhost2">>}]], http_get(Config, "/vhosts", ?OK)),
     assert_list([[{name, <<"myvhost1">>}]],
                 http_get(Config, "/vhosts", "myuser", "myuser", ?OK)),
-    http_put(Config, "/queues/myvhost1/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/myvhost2/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/myvhost1/myqueue", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/myvhost2/myqueue", QArgs, {group, '2xx'}),
     Test1 =
         fun(Path) ->
                 Results = http_get(Config, Path, "myuser", "myuser", ?OK),
@@ -727,9 +727,9 @@ permissions_vhost_test(Config) ->
     Test2("/exchanges", "amq.default/bindings/destination"),
     Test2("/bindings", "e/amq.default/q/myqueue"),
     Test2("/bindings", "e/amq.default/q/myqueue/myqueue"),
-    http_delete(Config, "/vhosts/myvhost1", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/myvhost2", ?NO_CONTENT),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/myvhost1", {group, '2xx'}),
+    http_delete(Config, "/vhosts/myvhost2", {group, '2xx'}),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     passed.
 
 permissions_amqp_test(Config) ->
@@ -738,13 +738,13 @@ permissions_amqp_test(Config) ->
     PermArgs = [{configure, <<"foo.*">>}, {write, <<"foo.*">>},
                 {read,      <<"foo.*">>}],
     http_put(Config, "/users/myuser", [{password, <<"myuser">>},
-                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/%2f/myuser", PermArgs, [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], {group, '2xx'}),
+    http_put(Config, "/permissions/%2f/myuser", PermArgs, {group, '2xx'}),
     http_put(Config, "/queues/%2f/bar-queue", QArgs, "myuser", "myuser",
              ?NOT_AUTHORISED),
     http_put(Config, "/queues/%2f/bar-queue", QArgs, "nonexistent", "nonexistent",
              ?NOT_AUTHORISED),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     passed.
 
 %% Opens a new connection and a channel on it.
@@ -776,12 +776,12 @@ get_conn(Config, Username, Password) ->
 permissions_connection_channel_consumer_test(Config) ->
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
     http_put(Config, "/users/user", [{password, <<"user">>},
-                                     {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/%2f/user", PermArgs, [?CREATED, ?NO_CONTENT]),
+                                     {tags, <<"management">>}], {group, '2xx'}),
+    http_put(Config, "/permissions/%2f/user", PermArgs, {group, '2xx'}),
     http_put(Config, "/users/monitor", [{password, <<"monitor">>},
-                                        {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/%2f/monitor", PermArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test", [], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"monitoring">>}], {group, '2xx'}),
+    http_put(Config, "/permissions/%2f/monitor", PermArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test", [], {group, '2xx'}),
 
     {Conn1, UserConn, UserCh, UserConnCh} = get_conn(Config, "user", "user"),
     {Conn2, MonConn, MonCh, MonConnCh} = get_conn(Config, "monitor", "monitor"),
@@ -822,22 +822,22 @@ permissions_connection_channel_consumer_test(Config) ->
                   end,
     AssertClose(UserConn, "monitor", ?NOT_AUTHORISED),
     AssertClose(MonConn, "user", ?NOT_AUTHORISED),
-    AssertClose(AdmConn, "guest", ?NO_CONTENT),
-    AssertClose(MonConn, "guest", ?NO_CONTENT),
-    AssertClose(UserConn, "user", ?NO_CONTENT),
+    AssertClose(AdmConn, "guest", {group, '2xx'}),
+    AssertClose(MonConn, "guest", {group, '2xx'}),
+    AssertClose(UserConn, "user", {group, '2xx'}),
 
-    http_delete(Config, "/users/user", ?NO_CONTENT),
-    http_delete(Config, "/users/monitor", ?NO_CONTENT),
+    http_delete(Config, "/users/user", {group, '2xx'}),
+    http_delete(Config, "/users/monitor", {group, '2xx'}),
     http_get(Config, "/connections/foo", ?NOT_FOUND),
     http_get(Config, "/channels/foo", ?NOT_FOUND),
-    http_delete(Config, "/queues/%2f/test", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test", {group, '2xx'}),
     passed.
 
 
 
 
 consumers_test(Config) ->
-    http_put(Config, "/queues/%2f/test", [], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/test", [], {group, '2xx'}),
     {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn(Config, "guest", "guest"),
     {ok, Ch} = amqp_connection:open_channel(Conn),
     amqp_channel:subscribe(
@@ -848,12 +848,12 @@ consumers_test(Config) ->
                   {ack_required, true},
                   {consumer_tag, <<"my-ctag">>}]], http_get(Config, "/consumers")),
     amqp_connection:close(Conn),
-    http_delete(Config, "/queues/%2f/test", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test", {group, '2xx'}),
     passed.
 
 defs(Config, Key, URI, CreateMethod, Args) ->
     defs(Config, Key, URI, CreateMethod, Args,
-         fun(URI2) -> http_delete(Config, URI2, ?NO_CONTENT) end).
+         fun(URI2) -> http_delete(Config, URI2, {group, '2xx'}) end).
 
 defs_v(Config, Key, URI, CreateMethod, Args) ->
     Rep1 = fun (S, S2) -> re:replace(S, "<vhost>", S2, [{return, list}]) end,
@@ -863,20 +863,20 @@ defs_v(Config, Key, URI, CreateMethod, Args) ->
     defs(Config, Key, Rep1(URI, "%2f"), CreateMethod, Rep2(Args, <<"/">>)),
 
     %% Test against new vhost
-    http_put(Config, "/vhosts/test", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/test", none, {group, '2xx'}),
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/permissions/test/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/permissions/test/guest", PermArgs, {group, '2xx'}),
     defs(Config, Key, Rep1(URI, "test"), CreateMethod, Rep2(Args, <<"test">>),
-         fun(URI2) -> http_delete(Config, URI2, ?NO_CONTENT),
-                      http_delete(Config, "/vhosts/test", ?NO_CONTENT) end).
+         fun(URI2) -> http_delete(Config, URI2, {group, '2xx'}),
+                      http_delete(Config, "/vhosts/test", {group, '2xx'}) end).
 
 create(Config, CreateMethod, URI, Args) ->
     case CreateMethod of
-        put        -> http_put(Config, URI, Args, [?CREATED, ?NO_CONTENT]),
+        put        -> http_put(Config, URI, Args, {group, '2xx'}),
                       URI;
-        put_update -> http_put(Config, URI, Args, ?NO_CONTENT),
+        put_update -> http_put(Config, URI, Args, {group, '2xx'}),
                       URI;
-        post       -> Headers = http_post(Config, URI, Args, [?CREATED, ?NO_CONTENT]),
+        post       -> Headers = http_post(Config, URI, Args, {group, '2xx'}),
                       rabbit_web_dispatch_util:unrelativise(
                         URI, pget("location", Headers))
     end.
@@ -892,7 +892,7 @@ defs(Config, Key, URI, CreateMethod, Args, DeleteFun) ->
     DeleteFun(URI2),
 
     %% Post the definitions back, it should get recreated in correct form
-    http_post(Config, "/definitions", Definitions, ?CREATED),
+    http_post(Config, "/definitions", Definitions, {group, '2xx'}),
     assert_item(Args, http_get(Config, URI2, ?OK)),
 
     %% And delete it again
@@ -948,7 +948,7 @@ definitions_test(Config) ->
     http_put(Config, "/permissions/%2f/guest",
              [{configure, <<".*">>},
               {write,     <<".*">>},
-              {read,      <<".*">>}], [?CREATED, ?NO_CONTENT]),
+              {read,      <<".*">>}], {group, '2xx'}),
     BrokenConfig =
         [{users,       []},
          {vhosts,      []},
@@ -973,22 +973,22 @@ defs_vhost(Config, Key, URI, CreateMethod, Args) ->
                                            (V)     -> V end, 2, L) end,
 
     %% Create test vhost
-    http_put(Config, "/vhosts/test", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/test", none, {group, '2xx'}),
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/permissions/test/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/permissions/test/guest", PermArgs, {group, '2xx'}),
 
     %% Test against default vhost
     defs_vhost(Config, Key, URI, Rep1, "%2f", "test", CreateMethod,
                Rep2(Args, <<"/">>), Rep2(Args, <<"test">>),
-               fun(URI2) -> http_delete(Config, URI2, [?NO_CONTENT, ?CREATED]) end),
+               fun(URI2) -> http_delete(Config, URI2, {group, '2xx'}) end),
 
     %% Test against test vhost
     defs_vhost(Config, Key, URI, Rep1, "test", "%2f", CreateMethod,
                Rep2(Args, <<"test">>), Rep2(Args, <<"/">>),
-               fun(URI2) -> http_delete(Config, URI2, [?NO_CONTENT, ?CREATED]) end),
+               fun(URI2) -> http_delete(Config, URI2, {group, '2xx'}) end),
 
     %% Remove test vhost
-    http_delete(Config, "/vhosts/test", ?NO_CONTENT).
+    http_delete(Config, "/vhosts/test", {group, '2xx'}).
 
 
 defs_vhost(Config, Key, URI0, Rep1, VHost1, VHost2, CreateMethod, Args1, Args2,
@@ -1004,7 +1004,7 @@ defs_vhost(Config, Key, URI0, Rep1, VHost1, VHost2, CreateMethod, Args1, Args2,
     false = lists:any(fun(I) -> test_item(Args2, I) end, pget(Key, Definitions0)),
 
     %% Post the definitions back
-    http_post(Config, "/definitions/" ++ VHost2, Definitions, [?NO_CONTENT, ?CREATED]),
+    http_post(Config, "/definitions/" ++ VHost2, Definitions, {group, '2xx'}),
 
     %% Make sure it is now in the other vhost
     Definitions1 = http_get(Config, "/definitions/" ++ VHost2, ?OK),
@@ -1058,7 +1058,7 @@ definitions_password_test(Config) ->
                   {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
                   {hashing_algorithm, <<"rabbit_password_hashing_md5">>},
                   {tags,          <<"management">>}],
-    http_post(Config, "/definitions", Config35, ?CREATED),
+    http_post(Config, "/definitions", Config35, {group, '2xx'}),
     Definitions35 = http_get(Config, "/definitions", ?OK),
     Users35 = pget(users, Definitions35),
     true = lists:any(fun(I) -> test_item(Expected35, I) end, Users35),
@@ -1073,7 +1073,7 @@ definitions_password_test(Config) ->
                   {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
                   {hashing_algorithm, <<"rabbit_password_hashing_sha256">>},
                   {tags,          <<"management">>}],
-    http_post(Config, "/definitions", Config36, ?CREATED),
+    http_post(Config, "/definitions", Config36, {group, '2xx'}),
 
     Definitions36 = http_get(Config, "/definitions", ?OK),
     Users36 = pget(users, Definitions36),
@@ -1093,7 +1093,7 @@ definitions_password_test(Config) ->
                        {password_hash, <<"WAbU0ZIcvjTpxM3Q3SbJhEAM2tQ=">>},
                        {hashing_algorithm, <<"rabbit_password_hashing_sha512">>},
                        {tags,          <<"management">>}],
-    http_post(Config, "/definitions", ConfigDefault, ?CREATED),
+    http_post(Config, "/definitions", ConfigDefault, {group, '2xx'}),
 
     DefinitionsDefault = http_get(Config, "/definitions", ?OK),
     UsersDefault = pget(users, DefinitionsDefault),
@@ -1123,17 +1123,17 @@ definitions_server_named_queue_test(Config) ->
     Path = "/queues/%2f/" ++ mochiweb_util:quote_plus(QName),
     http_get(Config, Path, ?OK),
     Definitions = http_get(Config, "/definitions", ?OK),
-    http_delete(Config, Path, ?NO_CONTENT),
+    http_delete(Config, Path, {group, '2xx'}),
     http_get(Config, Path, ?NOT_FOUND),
-    http_post(Config, "/definitions", Definitions, [?CREATED, ?NO_CONTENT]),
+    http_post(Config, "/definitions", Definitions, {group, '2xx'}),
     http_get(Config, Path, ?OK),
-    http_delete(Config, Path, ?NO_CONTENT),
+    http_delete(Config, Path, {group, '2xx'}),
     passed.
 
 aliveness_test(Config) ->
     [{status, <<"ok">>}] = http_get(Config, "/aliveness-test/%2f", ?OK),
     http_get(Config, "/aliveness-test/foo", ?NOT_FOUND),
-    http_delete(Config, "/queues/%2f/aliveness-test", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/aliveness-test", {group, '2xx'}),
     passed.
 
 healthchecks_test(Config) ->
@@ -1148,23 +1148,23 @@ arguments_test(Config) ->
     BArgs = [{routing_key, <<"">>},
              {arguments, [{'x-match', <<"all">>},
                           {foo, <<"bar">>}]}],
-    http_put(Config, "/exchanges/%2f/myexchange", XArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_post(Config, "/bindings/%2f/e/myexchange/q/myqueue", BArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/myexchange", XArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/arguments_test", QArgs, {group, '2xx'}),
+    http_post(Config, "/bindings/%2f/e/myexchange/q/arguments_test", BArgs, {group, '2xx'}),
     Definitions = http_get(Config, "/definitions", ?OK),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
-    http_post(Config, "/definitions", Definitions, ?CREATED),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/arguments_test", {group, '2xx'}),
+    http_post(Config, "/definitions", Definitions, {group, '2xx'}),
     [{'alternate-exchange', <<"amq.direct">>}] =
         pget(arguments, http_get(Config, "/exchanges/%2f/myexchange", ?OK)),
     [{'x-expires', 1800000}] =
-        pget(arguments, http_get(Config, "/queues/%2f/myqueue", ?OK)),
+        pget(arguments, http_get(Config, "/queues/%2f/arguments_test", ?OK)),
     true = lists:sort([{'x-match', <<"all">>}, {foo, <<"bar">>}]) =:=
 	lists:sort(pget(arguments,
-			http_get(Config, "/bindings/%2f/e/myexchange/q/myqueue/" ++
+			http_get(Config, "/bindings/%2f/e/myexchange/q/arguments_test/" ++
 				     "~nXOkVwqZzUOdS9_HcBWheg", ?OK))),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/arguments_test", {group, '2xx'}),
     passed.
 
 arguments_table_test(Config) ->
@@ -1172,17 +1172,17 @@ arguments_table_test(Config) ->
                            <<"amqp://localhost/%2f/upstream2">>]}],
     XArgs = [{type, <<"headers">>},
              {arguments, Args}],
-    http_put(Config, "/exchanges/%2f/myexchange", XArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/myexchange", XArgs, {group, '2xx'}),
     Definitions = http_get(Config, "/definitions", ?OK),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
-    http_post(Config, "/definitions", Definitions, ?CREATED),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
+    http_post(Config, "/definitions", Definitions, {group, '2xx'}),
     Args = pget(arguments, http_get(Config, "/exchanges/%2f/myexchange", ?OK)),
-    http_delete(Config, "/exchanges/%2f/myexchange", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/%2f/myexchange", {group, '2xx'}),
     passed.
 
 queue_purge_test(Config) ->
     QArgs = [],
-    http_put(Config, "/queues/%2f/myqueue", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/myqueue", QArgs, {group, '2xx'}),
     {Conn, Ch} = open_connection_and_channel(Config),
     Publish = fun() ->
                       amqp_channel:call(
@@ -1196,7 +1196,7 @@ queue_purge_test(Config) ->
       Ch, #'queue.declare'{queue = <<"exclusive">>, exclusive = true}),
     {#'basic.get_ok'{}, _} =
         amqp_channel:call(Ch, #'basic.get'{queue = <<"myqueue">>}),
-    http_delete(Config, "/queues/%2f/myqueue/contents", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/myqueue/contents", {group, '2xx'}),
     http_delete(Config, "/queues/%2f/badqueue/contents", ?NOT_FOUND),
     http_delete(Config, "/queues/%2f/exclusive/contents", ?BAD_REQUEST),
     http_delete(Config, "/queues/%2f/exclusive", ?BAD_REQUEST),
@@ -1204,15 +1204,15 @@ queue_purge_test(Config) ->
         amqp_channel:call(Ch, #'basic.get'{queue = <<"myqueue">>}),
     close_channel(Ch),
     close_connection(Conn),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/myqueue", {group, '2xx'}),
     passed.
 
 queue_actions_test(Config) ->
-    http_put(Config, "/queues/%2f/q", [], [?CREATED, ?NO_CONTENT]),
-    http_post(Config, "/queues/%2f/q/actions", [{action, sync}], ?NO_CONTENT),
-    http_post(Config, "/queues/%2f/q/actions", [{action, cancel_sync}], ?NO_CONTENT),
+    http_put(Config, "/queues/%2f/q", [], {group, '2xx'}),
+    http_post(Config, "/queues/%2f/q/actions", [{action, sync}], {group, '2xx'}),
+    http_post(Config, "/queues/%2f/q/actions", [{action, cancel_sync}], {group, '2xx'}),
     http_post(Config, "/queues/%2f/q/actions", [{action, change_colour}], ?BAD_REQUEST),
-    http_delete(Config, "/queues/%2f/q", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/q", {group, '2xx'}),
     passed.
 
 exclusive_consumer_test(Config) ->
@@ -1285,13 +1285,13 @@ connections_channels_pagination_test(Config) ->
 exchanges_pagination_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/guest", PermArgs, {group, '2xx'}),
     http_get(Config, "/exchanges/vh1?page=1&page_size=2", ?OK),
-    http_put(Config, "/exchanges/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/exchanges/vh1/test1", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/exchanges/%2f/test2_reg", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/exchanges/vh1/reg_test3", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/test0", QArgs, {group, '2xx'}),
+    http_put(Config, "/exchanges/vh1/test1", QArgs, {group, '2xx'}),
+    http_put(Config, "/exchanges/%2f/test2_reg", QArgs, {group, '2xx'}),
+    http_put(Config, "/exchanges/vh1/reg_test3", QArgs, {group, '2xx'}),
     PageOfTwo = http_get(Config, "/exchanges?page=1&page_size=2", ?OK),
     ?assertEqual(19, proplists:get_value(total_count, PageOfTwo)),
     ?assertEqual(19, proplists:get_value(filtered_count, PageOfTwo)),
@@ -1334,24 +1334,24 @@ exchanges_pagination_test(Config) ->
     http_get(Config, "/exchanges?page=1&page_size=not_an_intger_value", ?BAD_REQUEST),
     http_get(Config, "/exchanges?page=1&page_size=501", ?BAD_REQUEST), %% max 500 allowed
     http_get(Config, "/exchanges?page=-1&page_size=-2", ?BAD_REQUEST),
-    http_delete(Config, "/exchanges/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/exchanges/vh1/test1", ?NO_CONTENT),
-    http_delete(Config, "/exchanges/%2f/test2_reg", ?NO_CONTENT),
-    http_delete(Config, "/exchanges/vh1/reg_test3", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/vh1", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/exchanges/vh1/test1", {group, '2xx'}),
+    http_delete(Config, "/exchanges/%2f/test2_reg", {group, '2xx'}),
+    http_delete(Config, "/exchanges/vh1/reg_test3", {group, '2xx'}),
+    http_delete(Config, "/vhosts/vh1", {group, '2xx'}),
     passed.
 
 exchanges_pagination_permissions_test(Config) ->
     http_put(Config, "/users/admin",   [{password, <<"admin">>},
-                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], {group, '2xx'}),
     Perms = [{configure, <<".*">>},
 	     {write,     <<".*">>},
 	     {read,      <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/admin",   Perms, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/admin",   Perms, {group, '2xx'}),
     QArgs = [],
-    http_put(Config, "/exchanges/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/exchanges/vh1/test1", QArgs, "admin","admin", [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/test0", QArgs, {group, '2xx'}),
+    http_put(Config, "/exchanges/vh1/test1", QArgs, "admin","admin", {group, '2xx'}),
     FirstPage = http_get(Config, "/exchanges?page=1&name=test1","admin","admin", ?OK),
     ?assertEqual(8, proplists:get_value(total_count, FirstPage)),
     ?assertEqual(1, proplists:get_value(item_count, FirstPage)),
@@ -1360,9 +1360,9 @@ exchanges_pagination_permissions_test(Config) ->
     ?assertEqual(1, proplists:get_value(page_count, FirstPage)),
     assert_list([[{name, <<"test1">>}, {vhost, <<"vh1">>}]
 		], proplists:get_value(items, FirstPage)),
-    http_delete(Config, "/exchanges/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/exchanges/vh1/test1","admin","admin", ?NO_CONTENT),
-    http_delete(Config, "/users/admin", ?NO_CONTENT),
+    http_delete(Config, "/exchanges/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/exchanges/vh1/test1","admin","admin", {group, '2xx'}),
+    http_delete(Config, "/users/admin", {group, '2xx'}),
     passed.
 
 
@@ -1370,15 +1370,15 @@ exchanges_pagination_permissions_test(Config) ->
 queue_pagination_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/guest", PermArgs, {group, '2xx'}),
 
     http_get(Config, "/queues/vh1?page=1&page_size=2", ?OK),
 
-    http_put(Config, "/queues/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/vh1/test1", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test2_reg", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/vh1/reg_test3", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/test0", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/vh1/test1", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test2_reg", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/vh1/reg_test3", QArgs, {group, '2xx'}),
     PageOfTwo = http_get(Config, "/queues?page=1&page_size=2", ?OK),
     ?assertEqual(4, proplists:get_value(total_count, PageOfTwo)),
     ?assertEqual(4, proplists:get_value(filtered_count, PageOfTwo)),
@@ -1460,24 +1460,24 @@ queue_pagination_test(Config) ->
     http_get(Config, "/queues?page=1&page_size=not_an_intger_value", ?BAD_REQUEST),
     http_get(Config, "/queues?page=1&page_size=501", ?BAD_REQUEST), %% max 500 allowed
     http_get(Config, "/queues?page=-1&page_size=-2", ?BAD_REQUEST),
-    http_delete(Config, "/queues/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/queues/vh1/test1", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/test2_reg", ?NO_CONTENT),
-    http_delete(Config, "/queues/vh1/reg_test3", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/vh1", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/queues/vh1/test1", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/test2_reg", {group, '2xx'}),
+    http_delete(Config, "/queues/vh1/reg_test3", {group, '2xx'}),
+    http_delete(Config, "/vhosts/vh1", {group, '2xx'}),
     passed.
 
 queues_pagination_permissions_test(Config) ->
     http_put(Config, "/users/admin",   [{password, <<"admin">>},
-                                        {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                        {tags, <<"administrator">>}], {group, '2xx'}),
     Perms = [{configure, <<".*">>},
 	     {write,     <<".*">>},
 	     {read,      <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/admin",   Perms, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/admin",   Perms, {group, '2xx'}),
     QArgs = [],
-    http_put(Config, "/queues/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/vh1/test1", QArgs, "admin","admin", [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/test0", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/vh1/test1", QArgs, "admin","admin", {group, '2xx'}),
     FirstPage = http_get(Config, "/queues?page=1","admin","admin", ?OK),
     ?assertEqual(1, proplists:get_value(total_count, FirstPage)),
     ?assertEqual(1, proplists:get_value(item_count, FirstPage)),
@@ -1486,13 +1486,13 @@ queues_pagination_permissions_test(Config) ->
     ?assertEqual(1, proplists:get_value(page_count, FirstPage)),
     assert_list([[{name, <<"test1">>}, {vhost, <<"vh1">>}]
 		], proplists:get_value(items, FirstPage)),
-    http_delete(Config, "/queues/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/queues/vh1/test1","admin","admin", ?NO_CONTENT),
-    http_delete(Config, "/users/admin", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/queues/vh1/test1","admin","admin", {group, '2xx'}),
+    http_delete(Config, "/users/admin", {group, '2xx'}),
     passed.
 
 samples_range_test(Config) ->
-    
+
     {Conn, Ch} = open_connection_and_channel(Config),
 
     %% Channels.
@@ -1548,37 +1548,37 @@ samples_range_test(Config) ->
 
     %% Queues.
 
-    http_put(Config, "/queues/%2f/test0", [], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/test0", [], {group, '2xx'}),
 
     http_get(Config, "/queues/%2f?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/queues/%2f?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
     http_get(Config, "/queues/%2f/test0?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/queues/%2f/test0?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
 
-    http_delete(Config, "/queues/%2f/test0", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test0", {group, '2xx'}),
 
     %% Vhosts.
 
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
 
     http_get(Config, "/vhosts?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/vhosts?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
     http_get(Config, "/vhosts/vh1?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/vhosts/vh1?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
 
-    http_delete(Config, "/vhosts/vh1", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/vh1", {group, '2xx'}),
 
     passed.
 
 sorting_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/vh1/test1", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test2", QArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/vh1/test3", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/guest", PermArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test0", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/vh1/test1", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test2", QArgs, {group, '2xx'}),
+    http_put(Config, "/queues/vh1/test3", QArgs, {group, '2xx'}),
     assert_list([[{name, <<"test0">>}],
                  [{name, <<"test2">>}],
                  [{name, <<"test1">>}],
@@ -1605,35 +1605,35 @@ sorting_test(Config) ->
                  [{name, <<"test0">>}]], http_get(Config, "/queues?sort=vhost&sort_reverse=true", ?OK)),
     %% Rather poor but at least test it doesn't blow up with dots
     http_get(Config, "/queues?sort=owner_pid_details.name", ?OK),
-    http_delete(Config, "/queues/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/queues/vh1/test1", ?NO_CONTENT),
-    http_delete(Config, "/queues/%2f/test2", ?NO_CONTENT),
-    http_delete(Config, "/queues/vh1/test3", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/vh1", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/queues/vh1/test1", {group, '2xx'}),
+    http_delete(Config, "/queues/%2f/test2", {group, '2xx'}),
+    http_delete(Config, "/queues/vh1/test3", {group, '2xx'}),
+    http_delete(Config, "/vhosts/vh1", {group, '2xx'}),
     passed.
 
 format_output_test(Config) ->
     QArgs = [],
     PermArgs = [{configure, <<".*">>}, {write, <<".*">>}, {read, <<".*">>}],
-    http_put(Config, "/vhosts/vh1", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/vh1/guest", PermArgs, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test0", QArgs, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
+    http_put(Config, "/permissions/vh1/guest", PermArgs, {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test0", QArgs, {group, '2xx'}),
     assert_list([[{name, <<"test0">>},
 		  {consumer_utilisation, null},
 		  {exclusive_consumer_tag, null},
 		  {recoverable_slaves, null}]], http_get(Config, "/queues", ?OK)),
-    http_delete(Config, "/queues/%2f/test0", ?NO_CONTENT),
-    http_delete(Config, "/vhosts/vh1", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test0", {group, '2xx'}),
+    http_delete(Config, "/vhosts/vh1", {group, '2xx'}),
     passed.
 
 columns_test(Config) ->
     http_put(Config, "/queues/%2f/test", [{arguments, [{<<"foo">>, <<"bar">>}]}],
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
     [List] = http_get(Config, "/queues?columns=arguments.foo,name", ?OK),
     [{arguments, [{foo, <<"bar">>}]}, {name, <<"test">>}] = lists:sort(List),
     [{arguments, [{foo, <<"bar">>}]}, {name, <<"test">>}] =
         lists:sort(http_get(Config, "/queues/%2f/test?columns=arguments.foo,name", ?OK)),
-    http_delete(Config, "/queues/%2f/test", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test", {group, '2xx'}),
     passed.
 
 get_test(Config) ->
@@ -1642,21 +1642,21 @@ get_test(Config) ->
                 [{table,
                   [{<<"uri">>, longstr,
                     <<"amqp://localhost/%2f/upstream">>}]}]}],
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/queues/%2f/myqueue", [], {group, '2xx'}),
     {Conn, Ch} = open_connection_and_channel(Config),
+    #'confirm.select_ok'{} = amqp_channel:call(Ch, #'confirm.select'{}),
     Publish = fun (Payload) ->
                       amqp_channel:cast(
                         Ch, #'basic.publish'{exchange = <<>>,
                                              routing_key = <<"myqueue">>},
                         #amqp_msg{props = #'P_basic'{headers = Headers},
-                                  payload = Payload})
+                                  payload = Payload}),
+                      amqp_channel:wait_for_confirms_or_die(Ch, 5000)
               end,
     Publish(<<"1aaa">>),
     Publish(<<"2aaa">>),
     Publish(<<"3aaa">>),
-    amqp_channel:close(Ch),
-    close_connection(Conn),
-    [Msg] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    [Msg] = http_post(Config, "/queues/%2f/myqueue/get", [{ackmode, ack_requeue_false},
                                                           {count,    1},
                                                           {encoding, auto},
                                                           {truncate, 1}], ?OK),
@@ -1668,93 +1668,110 @@ get_test(Config) ->
       [[{uri,<<"amqp://localhost/%2f/upstream">>}]]}] =
         pget(headers, pget(properties, Msg)),
 
-    [M2, M3] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  true},
+    [M2, M3] = http_post(Config, "/queues/%2f/myqueue/get", [{ackmode,  ack_requeue_true},
                                                              {count,    5},
                                                              {encoding, auto}], ?OK),
     <<"2aaa">> = pget(payload, M2),
     <<"3aaa">> = pget(payload, M3),
-    2 = length(http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    2 = length(http_post(Config, "/queues/%2f/myqueue/get", [{ackmode,  ack_requeue_false},
                                                              {count,    5},
                                                              {encoding, auto}], ?OK)),
-    [] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    Publish(<<"4aaa">>),
+    Publish(<<"5aaa">>),
+    [M4, M5] = http_post(Config, "/queues/%2f/myqueue/get",
+			 [{ackmode,  reject_requeue_true},
+			  {count,    5},
+			  {encoding, auto}], ?OK),
+
+    <<"4aaa">> = pget(payload, M4),
+    <<"5aaa">> = pget(payload, M5),
+    2 = length(http_post(Config, "/queues/%2f/myqueue/get",
+			 [{ackmode,  ack_requeue_false},
+			  {count,    5},
+			  {encoding, auto}], ?OK)),
+
+    [] = http_post(Config, "/queues/%2f/myqueue/get", [{ackmode,  ack_requeue_false},
                                                        {count,    5},
                                                        {encoding, auto}], ?OK),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/myqueue", {group, '2xx'}),
+    amqp_channel:close(Ch),
+    close_connection(Conn),
+
     passed.
 
 get_fail_test(Config) ->
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                                       {tags, <<"management">>}], ?NO_CONTENT),
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], {group, '2xx'}),
+    http_put(Config, "/queues/%2f/myqueue", [], {group, '2xx'}),
     http_post(Config, "/queues/%2f/myqueue/get",
-              [{requeue,  false},
+              [{ackmode, ack_requeue_false},
                {count,    1},
                {encoding, auto}], "myuser", "password", ?NOT_AUTHORISED),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/myqueue", {group, '2xx'}),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     passed.
 
 publish_test(Config) ->
     Headers = [{'x-forwarding', [[{uri,<<"amqp://localhost/%2f/upstream">>}]]}],
-    Msg = msg(<<"myqueue">>, Headers, <<"Hello world">>),
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    Msg = msg(<<"publish_test">>, Headers, <<"Hello world">>),
+    http_put(Config, "/queues/%2f/publish_test", [], {group, '2xx'}),
     ?assertEqual([{routed, true}],
                  http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, ?OK)),
-    [Msg2] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    [Msg2] = http_post(Config, "/queues/%2f/publish_test/get", [{ackmode, ack_requeue_false},
                                                            {count,    1},
                                                            {encoding, auto}], ?OK),
     assert_item(Msg, Msg2),
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg2, ?OK),
-    [Msg3] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    [Msg3] = http_post(Config, "/queues/%2f/publish_test/get", [{ackmode, ack_requeue_false},
                                                            {count,    1},
                                                            {encoding, auto}], ?OK),
     assert_item(Msg, Msg3),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/publish_test", {group, '2xx'}),
     passed.
 
 publish_accept_json_test(Config) ->
     Headers = [{'x-forwarding', [[{uri, <<"amqp://localhost/%2f/upstream">>}]]}],
-    Msg = msg(<<"myqueue">>, Headers, <<"Hello world">>),
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    Msg = msg(<<"publish_accept_json_test">>, Headers, <<"Hello world">>),
+    http_put(Config, "/queues/%2f/publish_accept_json_test", [], {group, '2xx'}),
     ?assertEqual([{routed, true}],
 		 http_post_accept_json(Config, "/exchanges/%2f/amq.default/publish",
 				       Msg, ?OK)),
 
-    [Msg2] = http_post_accept_json(Config, "/queues/%2f/myqueue/get",
-				   [{requeue, false},
+    [Msg2] = http_post_accept_json(Config, "/queues/%2f/publish_accept_json_test/get",
+				   [{ackmode, ack_requeue_false},
 				    {count, 1},
 				    {encoding, auto}], ?OK),
     assert_item(Msg, Msg2),
     http_post_accept_json(Config, "/exchanges/%2f/amq.default/publish", Msg2, ?OK),
-    [Msg3] = http_post_accept_json(Config, "/queues/%2f/myqueue/get",
-				   [{requeue, false},
+    [Msg3] = http_post_accept_json(Config, "/queues/%2f/publish_accept_json_test/get",
+				   [{ackmode, ack_requeue_false},
 				    {count, 1},
 				    {encoding, auto}], ?OK),
     assert_item(Msg, Msg3),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/publish_accept_json_test", {group, '2xx'}),
     passed.
 
 publish_fail_test(Config) ->
-    Msg = msg(<<"myqueue">>, [], <<"Hello world">>),
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    Msg = msg(<<"publish_fail_test">>, [], <<"Hello world">>),
+    http_put(Config, "/queues/%2f/publish_fail_test", [], {group, '2xx'}),
     http_put(Config, "/users/myuser", [{password, <<"password">>},
-                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], {group, '2xx'}),
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, "myuser", "password",
               ?NOT_AUTHORISED),
     Msg2 = [{exchange,         <<"">>},
-            {routing_key,      <<"myqueue">>},
+            {routing_key,      <<"publish_fail_test">>},
             {properties,       [{user_id, <<"foo">>}]},
             {payload,          <<"Hello world">>},
             {payload_encoding, <<"string">>}],
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg2, ?BAD_REQUEST),
     Msg3 = [{exchange,         <<"">>},
-            {routing_key,      <<"myqueue">>},
+            {routing_key,      <<"publish_fail_test">>},
             {properties,       []},
             {payload,          [<<"not a string">>]},
             {payload_encoding, <<"string">>}],
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg3, ?BAD_REQUEST),
     MsgTemplate = [{exchange,         <<"">>},
-                   {routing_key,      <<"myqueue">>},
+                   {routing_key,      <<"publish_fail_test">>},
                    {payload,          <<"Hello world">>},
                    {payload_encoding, <<"string">>}],
     [http_post(Config, "/exchanges/%2f/amq.default/publish",
@@ -1762,22 +1779,24 @@ publish_fail_test(Config) ->
      || BadProp <- [{priority,   <<"really high">>},
                     {timestamp,  <<"recently">>},
                     {expiration, 1234}]],
-    http_delete(Config, "/users/myuser", ?NO_CONTENT),
+    http_delete(Config, "/users/myuser", {group, '2xx'}),
     passed.
 
 publish_base64_test(Config) ->
-    Msg     = msg(<<"myqueue">>, [], <<"YWJjZA==">>, <<"base64">>),
-    BadMsg1 = msg(<<"myqueue">>, [], <<"flibble">>,  <<"base64">>),
-    BadMsg2 = msg(<<"myqueue">>, [], <<"YWJjZA==">>, <<"base99">>),
-    http_put(Config, "/queues/%2f/myqueue", [], [?CREATED, ?NO_CONTENT]),
+    %% "abcd"
+    Msg     = msg(<<"publish_base64_test">>, [], <<"YWJjZA==">>, <<"base64">>),
+    BadMsg1 = msg(<<"publish_base64_test">>, [], <<"flibble">>,  <<"base64">>),
+    BadMsg2 = msg(<<"publish_base64_test">>, [], <<"YWJjZA==">>, <<"base99">>),
+    http_put(Config, "/queues/%2f/publish_base64_test", [], {group, '2xx'}),
     http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, ?OK),
     http_post(Config, "/exchanges/%2f/amq.default/publish", BadMsg1, ?BAD_REQUEST),
     http_post(Config, "/exchanges/%2f/amq.default/publish", BadMsg2, ?BAD_REQUEST),
-    [Msg2] = http_post(Config, "/queues/%2f/myqueue/get", [{requeue,  false},
+    timer:sleep(250),
+    [Msg2] = http_post(Config, "/queues/%2f/publish_base64_test/get", [{ackmode, ack_requeue_false},
                                                            {count,    1},
                                                            {encoding, auto}], ?OK),
     ?assertEqual(<<"abcd">>, pget(payload, Msg2)),
-    http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/publish_base64_test", {group, '2xx'}),
     passed.
 
 publish_unrouted_test(Config) ->
@@ -1786,14 +1805,14 @@ publish_unrouted_test(Config) ->
                  http_post(Config, "/exchanges/%2f/amq.default/publish", Msg, ?OK)).
 
 if_empty_unused_test(Config) ->
-    http_put(Config, "/exchanges/%2f/test", [], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/queues/%2f/test", [], [?CREATED, ?NO_CONTENT]),
-    http_post(Config, "/bindings/%2f/e/test/q/test", [], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/exchanges/%2f/test", [], {group, '2xx'}),
+    http_put(Config, "/queues/%2f/test", [], {group, '2xx'}),
+    http_post(Config, "/bindings/%2f/e/test/q/test", [], {group, '2xx'}),
     http_post(Config, "/exchanges/%2f/amq.default/publish",
               msg(<<"test">>, [], <<"Hello world">>), ?OK),
     http_delete(Config, "/queues/%2f/test?if-empty=true", ?BAD_REQUEST),
     http_delete(Config, "/exchanges/%2f/test?if-unused=true", ?BAD_REQUEST),
-    http_delete(Config, "/queues/%2f/test/contents", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test/contents", {group, '2xx'}),
 
     {Conn, _ConnPath, _ChPath, _ConnChPath} = get_conn(Config, "guest", "guest"),
     {ok, Ch} = amqp_connection:open_channel(Conn),
@@ -1801,15 +1820,15 @@ if_empty_unused_test(Config) ->
     http_delete(Config, "/queues/%2f/test?if-unused=true", ?BAD_REQUEST),
     amqp_connection:close(Conn),
 
-    http_delete(Config, "/queues/%2f/test?if-empty=true", ?NO_CONTENT),
-    http_delete(Config, "/exchanges/%2f/test?if-unused=true", ?NO_CONTENT),
+    http_delete(Config, "/queues/%2f/test?if-empty=true", {group, '2xx'}),
+    http_delete(Config, "/exchanges/%2f/test?if-unused=true", {group, '2xx'}),
     passed.
 
 parameters_test(Config) ->
     register_parameters_and_policy_validator(Config),
 
-    http_put(Config, "/parameters/test/%2f/good", [{value, <<"ignore">>}], [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/parameters/test/%2f/maybe", [{value, <<"good">>}], [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/parameters/test/%2f/good", [{value, <<"ignore">>}], {group, '2xx'}),
+    http_put(Config, "/parameters/test/%2f/maybe", [{value, <<"good">>}], {group, '2xx'}),
     http_put(Config, "/parameters/test/%2f/maybe", [{value, <<"bad">>}], ?BAD_REQUEST),
     http_put(Config, "/parameters/test/%2f/bad", [{value, <<"good">>}], ?BAD_REQUEST),
     http_put(Config, "/parameters/test/um/good", [{value, <<"ignore">>}], ?NOT_FOUND),
@@ -1833,8 +1852,8 @@ parameters_test(Config) ->
     assert_item(Good,  http_get(Config, "/parameters/test/%2f/good", ?OK)),
     assert_item(Maybe, http_get(Config, "/parameters/test/%2f/maybe", ?OK)),
 
-    http_delete(Config, "/parameters/test/%2f/good", ?NO_CONTENT),
-    http_delete(Config, "/parameters/test/%2f/maybe", ?NO_CONTENT),
+    http_delete(Config, "/parameters/test/%2f/good", {group, '2xx'}),
+    http_delete(Config, "/parameters/test/%2f/maybe", {group, '2xx'}),
     http_delete(Config, "/parameters/test/%2f/bad", ?NOT_FOUND),
 
     0 = length(http_get(Config, "/parameters")),
@@ -1858,19 +1877,19 @@ policy_test(Config) ->
     http_put(Config,
              "/policies/%2f/policy_pos",
              lists:keydelete(key, 1, PolicyPos),
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
     http_put(Config,
              "/policies/%2f/policy_even",
              lists:keydelete(key, 1, PolicyEven),
-             [?CREATED, ?NO_CONTENT]),
+             {group, '2xx'}),
     assert_item(PolicyPos,  http_get(Config, "/policies/%2f/policy_pos",  ?OK)),
     assert_item(PolicyEven, http_get(Config, "/policies/%2f/policy_even", ?OK)),
     List = [PolicyPos, PolicyEven],
     assert_list(List, http_get(Config, "/policies",     ?OK)),
     assert_list(List, http_get(Config, "/policies/%2f", ?OK)),
 
-    http_delete(Config, "/policies/%2f/policy_pos", ?NO_CONTENT),
-    http_delete(Config, "/policies/%2f/policy_even", ?NO_CONTENT),
+    http_delete(Config, "/policies/%2f/policy_pos", {group, '2xx'}),
+    http_delete(Config, "/policies/%2f/policy_even", {group, '2xx'}),
     0 = length(http_get(Config, "/policies")),
     0 = length(http_get(Config, "/policies/%2f")),
     unregister_parameters_and_policy_validator(Config),
@@ -1880,34 +1899,34 @@ policy_permissions_test(Config) ->
     register_parameters_and_policy_validator(Config),
 
     http_put(Config, "/users/admin",  [{password, <<"admin">>},
-                                       {tags, <<"administrator">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"administrator">>}], {group, '2xx'}),
     http_put(Config, "/users/mon",    [{password, <<"mon">>},
-                                       {tags, <<"monitoring">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"monitoring">>}], {group, '2xx'}),
     http_put(Config, "/users/policy", [{password, <<"policy">>},
-                                       {tags, <<"policymaker">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"policymaker">>}], {group, '2xx'}),
     http_put(Config, "/users/mgmt",   [{password, <<"mgmt">>},
-                                       {tags, <<"management">>}], [?CREATED, ?NO_CONTENT]),
+                                       {tags, <<"management">>}], {group, '2xx'}),
     Perms = [{configure, <<".*">>},
              {write,     <<".*">>},
              {read,      <<".*">>}],
-    http_put(Config, "/vhosts/v", none, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/v/admin",  Perms, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/v/mon",    Perms, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/v/policy", Perms, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/permissions/v/mgmt",   Perms, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/vhosts/v", none, {group, '2xx'}),
+    http_put(Config, "/permissions/v/admin",  Perms, {group, '2xx'}),
+    http_put(Config, "/permissions/v/mon",    Perms, {group, '2xx'}),
+    http_put(Config, "/permissions/v/policy", Perms, {group, '2xx'}),
+    http_put(Config, "/permissions/v/mgmt",   Perms, {group, '2xx'}),
 
     Policy = [{pattern,    <<".*">>},
               {definition, [{<<"ha-mode">>, <<"all">>}]}],
     Param = [{value, <<"">>}],
 
-    http_put(Config, "/policies/%2f/HA", Policy, [?CREATED, ?NO_CONTENT]),
-    http_put(Config, "/parameters/test/%2f/good", Param, [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/policies/%2f/HA", Policy, {group, '2xx'}),
+    http_put(Config, "/parameters/test/%2f/good", Param, {group, '2xx'}),
 
     Pos = fun (U) ->
-                  Expected = case U of "admin" -> [?CREATED, ?NO_CONTENT]; _ -> ?NO_CONTENT end,
+                  Expected = case U of "admin" -> ?CREATED; _ -> ?NO_CONTENT end,
                   http_put(Config, "/policies/v/HA",        Policy, U, U, Expected),
                   http_put(Config,
-                           "/parameters/test/v/good",       Param, U, U, ?NO_CONTENT),
+                           "/parameters/test/v/good",       Param, U, U, {group, '2xx'}),
                   1 = length(http_get(Config, "/policies",          U, U, ?OK)),
                   1 = length(http_get(Config, "/parameters/test",   U, U, ?OK)),
                   1 = length(http_get(Config, "/parameters",        U, U, ?OK)),
@@ -1945,16 +1964,16 @@ policy_permissions_test(Config) ->
     [AlwaysNeg(U) || U <- ["mon", "mgmt", "admin", "policy"]],
 
     %% This one is deliberately different between admin and policymaker.
-    http_put(Config, "/parameters/test/v/admin", Param, "admin", "admin", [?CREATED, ?NO_CONTENT]),
+    http_put(Config, "/parameters/test/v/admin", Param, "admin", "admin", {group, '2xx'}),
     http_put(Config, "/parameters/test/v/admin", Param, "policy", "policy",
              ?BAD_REQUEST),
 
-    http_delete(Config, "/vhosts/v", ?NO_CONTENT),
-    http_delete(Config, "/users/admin", ?NO_CONTENT),
-    http_delete(Config, "/users/mon", ?NO_CONTENT),
-    http_delete(Config, "/users/policy", ?NO_CONTENT),
-    http_delete(Config, "/users/mgmt", ?NO_CONTENT),
-    http_delete(Config, "/policies/%2f/HA", ?NO_CONTENT),
+    http_delete(Config, "/vhosts/v", {group, '2xx'}),
+    http_delete(Config, "/users/admin", {group, '2xx'}),
+    http_delete(Config, "/users/mon", {group, '2xx'}),
+    http_delete(Config, "/users/policy", {group, '2xx'}),
+    http_delete(Config, "/users/mgmt", {group, '2xx'}),
+    http_delete(Config, "/policies/%2f/HA", {group, '2xx'}),
 
     unregister_parameters_and_policy_validator(Config),
     passed.
@@ -1972,10 +1991,13 @@ extensions_test(Config) ->
 
 cors_test(Config) ->
     %% With CORS disabled. No header should be received.
-    {ok, {_, HdNoCORS, _}} = req(Config, get, "/overview", [auth_header("guest", "guest")]),
+    R = req(Config, get, "/overview", [auth_header("guest", "guest")]),
+    io:format("CORS test R: ~p~n", [R]),
+    {ok, {_, HdNoCORS, _}} = R,
+    io:format("CORS test HdNoCORS: ~p~n", [HdNoCORS]),
     false = lists:keymember("access-control-allow-origin", 1, HdNoCORS),
     %% The Vary header should include "Origin" regardless of CORS configuration.
-    {_, "Accept-Encoding, origin"} = lists:keyfind("vary", 1, HdNoCORS),
+    {_, "accept-encoding, origin"} = lists:keyfind("vary", 1, HdNoCORS),
     %% Enable CORS.
     rabbit_ct_broker_helpers:rpc(Config, 0, application, set_env, [rabbitmq_management, cors_allow_origins, ["http://rabbitmq.com"]]),
     %% We should only receive allow-origin and allow-credentials from GET.
@@ -2037,7 +2059,7 @@ spawn_invalid(_Config, 0) ->
 spawn_invalid(Config, N) ->
     Self = self(),
     spawn(fun() ->
-                  timer:sleep(rand_compat:uniform(250)),
+                  timer:sleep(rand:uniform(250)),
                   {ok, Sock} = gen_tcp:connect("localhost", amqp_port(Config), [list]),
                   ok = gen_tcp:send(Sock, "Some Data"),
                   receive_msg(Self)

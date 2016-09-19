@@ -14,7 +14,7 @@
 %%   Copyright (c) 2007-2016 Pivotal Software, Inc.  All rights reserved.
 %%
 
--module(rabbit_mgmt_wm_policies).
+-module(rabbit_mgmt_wm_operator_policies).
 
 -export([init/3, rest_init/2, to_json/2, content_types_provided/2, is_authorized/2,
          resource_exists/2, basic/1]).
@@ -48,13 +48,13 @@ to_json(ReqData, Context) ->
       ["priority"], ReqData, Context).
 
 is_authorized(ReqData, Context) ->
-    rabbit_mgmt_util:is_authorized_vhost(ReqData, Context).
+    rabbit_mgmt_util:is_authorized_admin(ReqData, Context).
 
 %%--------------------------------------------------------------------
 
 basic(ReqData) ->
     case rabbit_mgmt_util:vhost(ReqData) of
         not_found -> not_found;
-        none      -> rabbit_policy:list();
-        VHost     -> rabbit_policy:list(VHost)
+        none      -> rabbit_policy:list_op();
+        VHost     -> rabbit_policy:list_op(VHost)
     end.

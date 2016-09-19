@@ -14,16 +14,18 @@
 %%   Copyright (c) 2007-2016 Pivotal Software, Inc.  All rights reserved.
 %%
 
--module(rabbit_mgmt_wm_exchange).
+-module(rabbit_mgmt_wm_operator_policy).
 
 -export([init/3, rest_init/2, resource_exists/2, to_json/2,
          content_types_provided/2, content_types_accepted/2,
          is_authorized/2, allowed_methods/2, accept_content/2,
-         delete_resource/2, exchange/1, exchange/2]).
+         delete_resource/2]).
 -export([variances/2]).
 
+-import(rabbit_misc, [pget/2]).
+
 -include("rabbit_mgmt.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("rabbit_common/include/rabbit.hrl").
 
 %%--------------------------------------------------------------------
 
@@ -39,58 +41,54 @@ content_types_provided(ReqData, Context) ->
    {[{<<"application/json">>, to_json}], ReqData, Context}.
 
 content_types_accepted(ReqData, Context) ->
-    {[{'*', accept_content}], ReqData, Context}.
+   {[{<<"application/json">>, accept_content}], ReqData, Context}.
 
 allowed_methods(ReqData, Context) ->
     {[<<"HEAD">>, <<"GET">>, <<"PUT">>, <<"DELETE">>, <<"OPTIONS">>], ReqData, Context}.
 
 resource_exists(ReqData, Context) ->
-    {case exchange(ReqData) of
+    {case policy(ReqData) of
          not_found -> false;
          _         -> true
      end, ReqData, Context}.
 
 to_json(ReqData, Context) ->
-    try
-        [X] = rabbit_mgmt_db:augment_exchanges(
-                [exchange(ReqData)], rabbit_mgmt_util:range(ReqData), full),
-        rabbit_mgmt_util:reply(X, ReqData, Context)
-    catch
-        {error, invalid_range_parameters, Reason} ->
-            rabbit_mgmt_util:bad_request(iolist_to_binary(Reason), ReqData, Context)
-    end.
+    rabbit_mgmt_util:reply(policy(ReqData), ReqData, Context).
 
 accept_content(ReqData, Context) ->
-    rabbit_mgmt_util:http_to_amqp(
-      'exchange.declare', ReqData, Context,
-      fun rabbit_mgmt_format:format_accept_content/1,
-      [{exchange, rabbit_mgmt_util:id(exchange, ReqData)}]).
+    case rabbit_mgmt_util:vhost(ReqData) of
+        not_found ->
+            rabbit_mgmt_util:not_found(vhost_not_found, ReqData, Context);
+        VHost ->
+            rabbit_mgmt_util:with_decode(
+              [pattern, definition], ReqData, Context,
+              fun([Pattern, Definition], Body) ->
+                      case rabbit_policy:set_op(
+                             VHost, name(ReqData), Pattern,
+                             rabbit_misc:json_to_term(Definition),
+                             proplists:get_value(priority, Body),
+                             proplists:get_value('apply-to', Body)) of
+                          ok ->
+                              {true, ReqData, Context};
+                          {error_string, Reason} ->
+                              rabbit_mgmt_util:bad_request(
+                                list_to_binary(Reason), ReqData, Context)
+                      end
+              end)
+    end.
 
 delete_resource(ReqData, Context) ->
-    IfUnused = <<"true">> =:= element(1, cowboy_req:qs_val(<<"if-unused">>, ReqData)),
-    rabbit_mgmt_util:amqp_request(
-      rabbit_mgmt_util:vhost(ReqData), ReqData, Context,
-      #'exchange.delete'{exchange  = id(ReqData),
-                         if_unused = IfUnused}).
+    ok = rabbit_policy:delete_op(
+           rabbit_mgmt_util:vhost(ReqData), name(ReqData)),
+    {true, ReqData, Context}.
 
 is_authorized(ReqData, Context) ->
-    rabbit_mgmt_util:is_authorized_vhost(ReqData, Context).
+    rabbit_mgmt_util:is_authorized_admin(ReqData, Context).
 
 %%--------------------------------------------------------------------
 
-exchange(ReqData) ->
-    case rabbit_mgmt_util:vhost(ReqData) of
-        not_found -> not_found;
-        VHost     -> exchange(VHost, id(ReqData))
-    end.
+policy(ReqData) ->
+    rabbit_policy:lookup_op(
+      rabbit_mgmt_util:vhost(ReqData), name(ReqData)).
 
-exchange(VHost, XName) ->
-    Name = rabbit_misc:r(VHost, exchange, XName),
-    case rabbit_exchange:lookup(Name) of
-        {ok, X}            -> rabbit_mgmt_format:exchange(
-                                rabbit_exchange:info(X));
-        {error, not_found} -> not_found
-    end.
-
-id(ReqData) ->
-    rabbit_mgmt_util:id(exchange, ReqData).
+name(ReqData) -> rabbit_mgmt_util:id(name, ReqData).

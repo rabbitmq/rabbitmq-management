@@ -69,7 +69,7 @@ init([]) ->
     {ok, MaxBacklog} = application:get_env(rabbitmq_management,
                                            stats_event_max_backlog),
     process_flag(priority, high),
-    rabbit_log:info("Statistics queue stats collector started.~n"),
+    rabbit_log:info("Statistics queue stats collector started."),
     {ok, reset_lookups(
            #state{interval               = Interval,
                   rates_mode             = RatesMode,
