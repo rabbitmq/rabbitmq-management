@@ -671,10 +671,18 @@ or:
 <pre>{"password_hash":"2lmoth8l4H0DViLaK9Fxi6l9ds8=", "tags":"administrator"}</pre>
         The <code>tags</code> key is mandatory. Either
         <code>password</code> or <code>password_hash</code>
-        must be set. Setting <code>password_hash</code> to "" will ensure the
+        must be set. Setting <code>password_hash</code> to <code>""</code> will ensure the
         user cannot use a password to log in. <code>tags</code> is a
         comma-separated list of tags for the user. Currently recognised tags
-        are "administrator", "monitoring" and "management".
+        are <code>administrator</code>, <code>monitoring</code> and <code>management</code>.
+        <code>password_hash</code> must be created using this algorithm:
+        <ul>
+          <li>Generate a random 32 bit salt: <code>908D C60A</code></li>
+          <li>Concatenate that with the UTF-8 representation of the password (in this case <code>test12</code>): <code>908D C60A 7465 7374 3132</code></li>
+          <li>Take the sha256 hash: <code>A5B9 24B3 096B 8897 D65A 3B5F 80FA 5DB62 A94 B831 22CD F4F8 FEAD 10D5 15D8 F391</code></li>
+          <li>Concatenate the salt again: <code>908D C60A A5B9 24B3 096B 8897 D65A 3B5F 80FA 5DB62 A94 B831 22CD F4F8 FEAD 10D5 15D8 F391</code></li>
+          <li>Convert to base64 encoding: <code>kI3GCqW5JLMJa4iX1lo7X4D6XbYqlLgxIs30+P6tENUV2POR</code></li>
+        </ul>
         </td>
       </tr>
       <tr>
