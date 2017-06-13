@@ -246,7 +246,6 @@ reply_list(Facts, DefaultSorts, ReqData, Context, Pagination) ->
           DefaultSorts,
           get_value_param(<<"sort">>, ReqData),
           get_sort_reverse(ReqData), Pagination),
-
     reply(SortList, ReqData, Context).
 
 -spec get_sort_reverse(cowboy_req:req()) -> atom().
@@ -522,8 +521,20 @@ pget_bin(Key, List, Default) ->
         {[],        _} -> Default
     end.
 
+
+maybe_pagination(Item, false, ReqData) ->
+    extract_column_items(Item, columns(ReqData));
+maybe_pagination([{items, Item} | T], true, ReqData) ->
+    [{items, extract_column_items(Item, columns(ReqData))} |
+     maybe_pagination(T, true, ReqData)];
+maybe_pagination([H | T], true, ReqData) ->
+    [H | maybe_pagination(T,true, ReqData)];
+maybe_pagination(Item, true, ReqData) ->
+    [maybe_pagination(X, true, ReqData) || X <- Item].
+
 extract_columns(Item, ReqData) ->
-    extract_column_items(Item, columns(ReqData)).
+    maybe_pagination(Item, is_pagination_requested(pagination_params(ReqData)),
+		     ReqData).
 
 extract_columns_list(Items, ReqData) ->
     Cols = columns(ReqData),
@@ -535,6 +546,7 @@ columns(ReqData) ->
         {Bin, _}       -> [[list_to_binary(T) || T <- string:tokens(C, ".")]
                       || C <- string:tokens(binary_to_list(Bin), ",")]
     end.
+
 
 extract_column_items(Item, all) ->
     Item;
