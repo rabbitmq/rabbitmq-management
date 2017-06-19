@@ -242,11 +242,10 @@ get_value_param(Name, ReqData) ->
 reply_list(Facts, DefaultSorts, ReqData, Context, Pagination) ->
     SortList =
     sort_list_and_paginate(
-          extract_columns_list(Facts, ReqData),
+          extract_columns_list(Facts, ReqData, false),
           DefaultSorts,
           get_value_param(<<"sort">>, ReqData),
           get_sort_reverse(ReqData), Pagination),
-
     reply(SortList, ReqData, Context).
 
 -spec get_sort_reverse(cowboy_req:req()) -> atom().
@@ -291,6 +290,7 @@ maybe_augment_paged_facts(ShouldAugment, AugmentFn, PagingResult) ->
       end,
      PagingResult).
 
+
 %% Augmenting items with calculated stats (with the help of exometer)
 %% is quite expensive, so when request is paged and sort order doesn't
 %% reference augmented columns, we can postpone augmentation until the
@@ -320,7 +320,7 @@ unaugmented_reply_list_or_paginate(BasicFacts,
               AugmentAfterPagination = is_pagination_requested(Pagination) andalso CanAugmentAfterPaginationPredicate(MentionedSortColumns),
               FactsForPagination = maybe_augment_facts(not AugmentAfterPagination, AugmentFn, BasicFacts),
               SortedFacts = sort_list(
-                              extract_columns_list(FactsForPagination, ReqData),
+                              extract_columns_list(FactsForPagination, ReqData, true),
                               DefaultSorts,
                               SortParam,
                               get_sort_reverse(ReqData)),
@@ -522,12 +522,33 @@ pget_bin(Key, List, Default) ->
         {[],        _} -> Default
     end.
 
-extract_columns(Item, ReqData) ->
-    extract_column_items(Item, columns(ReqData)).
 
-extract_columns_list(Items, ReqData) ->
+maybe_pagination(Item, false, ReqData) ->
+    extract_column_items(Item, columns(ReqData));
+maybe_pagination([{items, Item} | T], true, ReqData) ->
+    [{items, extract_column_items(Item, columns(ReqData))} |
+     maybe_pagination(T, true, ReqData)];
+maybe_pagination([H | T], true, ReqData) ->
+    [H | maybe_pagination(T,true, ReqData)];
+maybe_pagination(Item, true, ReqData) ->
+    [maybe_pagination(X, true, ReqData) || X <- Item].
+
+extract_columns(Item, ReqData) ->
+    maybe_pagination(Item, is_pagination_requested(pagination_params(ReqData)),
+		     ReqData).
+
+
+maybe_column_pid(all, _) -> all;
+maybe_column_pid(Cols, true) ->
+    case lists:member([<<"pid">>], Cols) of
+	true -> Cols;
+	false -> [[<<"pid">>] | Cols]
+    end;
+maybe_column_pid(Cols, false) -> Cols.
+
+extract_columns_list(Items, ReqData, CheckPid) ->
     Cols = columns(ReqData),
-    [extract_column_items(Item, Cols) || Item <- Items].
+    [extract_column_items(Item, maybe_column_pid(Cols, CheckPid)) || Item <- Items].
 
 columns(ReqData) ->
     case cowboy_req:qs_val(<<"columns">>, ReqData) of
@@ -535,6 +556,7 @@ columns(ReqData) ->
         {Bin, _}       -> [[list_to_binary(T) || T <- string:tokens(C, ".")]
                       || C <- string:tokens(binary_to_list(Bin), ",")]
     end.
+
 
 extract_column_items(Item, all) ->
     Item;
