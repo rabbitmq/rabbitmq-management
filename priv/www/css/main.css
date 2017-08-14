@@ -301,3 +301,11 @@ tr.alt2>td {
     background: -webkit-gradient(linear, left top, left bottom, color-stop(0, #f0f0f0),color-stop(1, #e0e0e0));
     border: 1px solid #e0e0e0;
 }
+
+#mouse_over {
+    opacity: 0;
+}
+
+#mouse_over:hover {
+    opacity: 1;
+}
