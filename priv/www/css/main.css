@@ -302,10 +302,10 @@ tr.alt2>td {
     border: 1px solid #e0e0e0;
 }
 
-#mouse_over {
+.mouse_over {
     opacity: 0;
 }
 
-#mouse_over:hover {
+.mouse_over:hover {
     opacity: 1;
 }
