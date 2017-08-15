@@ -302,10 +302,18 @@ tr.alt2>td {
     border: 1px solid #e0e0e0;
 }
 
-.uri-with-credentials {
+td > div.uri-with-credentials {
     visibility: hidden;
 }
 
-.uri-with-credentials:hover {
+td > .hover-hint {
+    display: inline;
+}
+
+td:hover > .uri-with-credentials {
     visibility: visible;
+}
+
+td:hover > .hover-hint {
+    display: none;
 }
