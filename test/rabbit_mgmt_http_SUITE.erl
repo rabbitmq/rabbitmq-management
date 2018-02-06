@@ -115,6 +115,7 @@ all_tests() -> [
     format_output_test,
     columns_test,
     get_test,
+    get_encoding_test,
     get_fail_test,
     publish_test,
     publish_accept_json_test,
@@ -1973,6 +1974,41 @@ get_test(Config) ->
                                                        {count,    5},
                                                        {encoding, auto}], ?OK),
     http_delete(Config, "/queues/%2f/myqueue", ?NO_CONTENT),
+    passed.
+
+get_encoding_test(Config) ->
+    Utf8Text = <<"Loïc was here!"/utf8>>,
+    Utf8Payload = base64:encode(Utf8Text),
+    BinPayload = base64:encode(<<0:64, 16#ff, 16#fd, 0:64>>),
+    Utf8Msg = msg(<<"get_encoding_test">>, [], Utf8Payload, <<"base64">>),
+    BinMsg  = msg(<<"get_encoding_test">>, [], BinPayload, <<"base64">>),
+    http_put(Config, "/queues/%2f/get_encoding_test", [], ?CREATED),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", Utf8Msg, ?OK),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", BinMsg,  ?OK),
+    timer:sleep(250),
+    [RecvUtf8Msg1, RecvBinMsg1] = http_post(Config, "/queues/%2f/get_encoding_test/get",
+                                                          [{requeue,  false},
+                                                           {count,    2},
+                                                           {encoding, auto}], ?OK),
+    %% Utf-8 payload must be returned as a utf-8 string when auto encoding is used.
+    ?assertEqual(<<"string">>, proplists:get_value(payload_encoding, RecvUtf8Msg1)),
+    ?assertEqual(Utf8Text, proplists:get_value(payload, RecvUtf8Msg1)),
+    %% Binary payload must be base64-encoded when auto is used.
+    ?assertEqual(<<"base64">>, proplists:get_value(payload_encoding, RecvBinMsg1)),
+    ?assertEqual(BinPayload, proplists:get_value(payload, RecvBinMsg1)),
+    %% Good. Now try forcing the base64 encoding.
+    http_post(Config, "/exchanges/%2f/amq.default/publish", Utf8Msg, ?OK),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", BinMsg,  ?OK),
+    [RecvUtf8Msg2, RecvBinMsg2] = http_post(Config, "/queues/%2f/get_encoding_test/get",
+                                                          [{requeue,  false},
+                                                           {count,    2},
+                                                           {encoding, base64}], ?OK),
+    %% All payloads must be base64-encoded when base64 encoding is used.
+    ?assertEqual(<<"base64">>, proplists:get_value(payload_encoding, RecvUtf8Msg2)),
+    ?assertEqual(Utf8Payload, proplists:get_value(payload, RecvUtf8Msg2)),
+    ?assertEqual(<<"base64">>, proplists:get_value(payload_encoding, RecvBinMsg2)),
+    ?assertEqual(BinPayload, proplists:get_value(payload, RecvBinMsg2)),
+    http_delete(Config, "/queues/%2f/get_encoding_test", ?NO_CONTENT),
     passed.
 
 get_fail_test(Config) ->
