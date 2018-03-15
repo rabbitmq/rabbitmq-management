@@ -116,6 +116,7 @@ all_tests() -> [
     format_output_test,
     columns_test,
     get_test,
+    get_encoding_test,
     get_fail_test,
     publish_test,
     publish_accept_json_test,
@@ -782,7 +783,7 @@ connections_test(Config) ->
              rabbit_mgmt_format:print(
                "/connections/127.0.0.1%3A~w%20-%3E%20127.0.0.1%3A~w",
                [LocalPort, amqp_port(Config)])),
-    timer:sleep(1150),
+    timer:sleep(1500),
     http_get(Config, Path, ?OK),
     http_delete(Config, Path, {group, '2xx'}),
     %% TODO rabbit_reader:shutdown/2 returns before the connection is
@@ -910,14 +911,12 @@ queues_test(Config) ->
                    arguments   => #{}},
                  #{name        => <<"foo">>,
                    vhost       => <<"/">>,
-                   state       => <<"running">>,
                    durable     => true,
                    auto_delete => false,
                    exclusive   => false,
                    arguments   => #{}}], Queues),
     assert_item(#{name        => <<"foo">>,
                   vhost       => <<"/">>,
-                  state       => <<"running">>,
                   durable     => true,
                   auto_delete => false,
                   exclusive   => false,
@@ -1211,7 +1210,7 @@ permissions_connection_channel_consumer_test(Config) ->
     [amqp_channel:subscribe(
        Ch, #'basic.consume'{queue = <<"test">>}, self()) ||
         Ch <- [Ch1, Ch2, Ch3]],
-    timer:sleep(1150),
+    timer:sleep(1500),
     AssertLength = fun (Path, User, Len) ->
                            ?assertEqual(Len,
                                         length(http_get(Config, Path, User, User, ?OK)))
@@ -1264,7 +1263,7 @@ consumers_test(Config) ->
       Ch, #'basic.consume'{queue        = <<"test">>,
                            no_ack       = false,
                            consumer_tag = <<"my-ctag">> }, self()),
-    timer:sleep(1150),
+    timer:sleep(1500),
     assert_list([#{exclusive    => false,
                    ack_required => true,
                    consumer_tag => <<"my-ctag">>}], http_get(Config, "/consumers")),
@@ -1671,7 +1670,7 @@ exclusive_consumer_test(Config) ->
         amqp_channel:call(Ch, #'queue.declare'{exclusive = true}),
     amqp_channel:subscribe(Ch, #'basic.consume'{queue     = QName,
                                                 exclusive = true}, self()),
-    timer:sleep(1000), %% Sadly we need to sleep to let the stats update
+    timer:sleep(1500), %% Sadly we need to sleep to let the stats update
     http_get(Config, "/queues/%2f/"), %% Just check we don't blow up
     close_channel(Ch),
     close_connection(Conn),
@@ -1682,7 +1681,7 @@ exclusive_queue_test(Config) ->
     {Conn, Ch} = open_connection_and_channel(Config),
     #'queue.declare_ok'{ queue = QName } =
     amqp_channel:call(Ch, #'queue.declare'{exclusive = true}),
-    timer:sleep(1000), %% Sadly we need to sleep to let the stats update
+    timer:sleep(1500), %% Sadly we need to sleep to let the stats update
     Path = "/queues/%2f/" ++ rabbit_http_util:quote_plus(QName),
     Queue = http_get(Config, Path),
     assert_item(#{name        => QName,
@@ -2093,7 +2092,7 @@ samples_range_test(Config) ->
     %% Queues.
 
     http_put(Config, "/queues/%2f/test0", #{}, {group, '2xx'}),
-    timer:sleep(1150),
+    timer:sleep(1500),
 
     http_get(Config, "/queues/%2f?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/queues/%2f?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
@@ -2105,7 +2104,7 @@ samples_range_test(Config) ->
     %% Vhosts.
 
     http_put(Config, "/vhosts/vh1", none, {group, '2xx'}),
-    timer:sleep(1150),
+    timer:sleep(1500),
 
     http_get(Config, "/vhosts?lengths_age=60&lengths_incr=1", ?OK),
     http_get(Config, "/vhosts?lengths_age=6000&lengths_incr=1", ?BAD_REQUEST),
@@ -2176,7 +2175,7 @@ columns_test(Config) ->
     http_put(Config, "/queues/%2f/test", [{arguments, [{<<"foo">>, <<"bar">>}]}],
              {group, '2xx'}),
     Item = #{arguments => #{foo => <<"bar">>}, name => <<"test">>},
-    timer:sleep(1150),
+    timer:sleep(1500),
     [Item] = http_get(Config, "/queues?columns=arguments.foo,name", ?OK),
     Item = http_get(Config, "/queues/%2f/test?columns=arguments.foo,name", ?OK),
     http_delete(Config, "/queues/%2f/test", {group, '2xx'}),
@@ -2243,6 +2242,41 @@ get_test(Config) ->
     amqp_channel:close(Ch),
     close_connection(Conn),
 
+    passed.
+
+get_encoding_test(Config) ->
+    Utf8Text = <<"Loïc was here!"/utf8>>,
+    Utf8Payload = base64:encode(Utf8Text),
+    BinPayload = base64:encode(<<0:64, 16#ff, 16#fd, 0:64>>),
+    Utf8Msg = msg(<<"get_encoding_test">>, #{}, Utf8Payload, <<"base64">>),
+    BinMsg  = msg(<<"get_encoding_test">>, #{}, BinPayload, <<"base64">>),
+    http_put(Config, "/queues/%2f/get_encoding_test", #{}, {group, '2xx'}),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", Utf8Msg, ?OK),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", BinMsg,  ?OK),
+    timer:sleep(250),
+    [RecvUtf8Msg1, RecvBinMsg1] = http_post(Config, "/queues/%2f/get_encoding_test/get",
+                                                          [{ackmode, ack_requeue_false},
+                                                           {count,    2},
+                                                           {encoding, auto}], ?OK),
+    %% Utf-8 payload must be returned as a utf-8 string when auto encoding is used.
+    ?assertEqual(<<"string">>, maps:get(payload_encoding, RecvUtf8Msg1)),
+    ?assertEqual(Utf8Text, maps:get(payload, RecvUtf8Msg1)),
+    %% Binary payload must be base64-encoded when auto is used.
+    ?assertEqual(<<"base64">>, maps:get(payload_encoding, RecvBinMsg1)),
+    ?assertEqual(BinPayload, maps:get(payload, RecvBinMsg1)),
+    %% Good. Now try forcing the base64 encoding.
+    http_post(Config, "/exchanges/%2f/amq.default/publish", Utf8Msg, ?OK),
+    http_post(Config, "/exchanges/%2f/amq.default/publish", BinMsg,  ?OK),
+    [RecvUtf8Msg2, RecvBinMsg2] = http_post(Config, "/queues/%2f/get_encoding_test/get",
+                                                          [{ackmode, ack_requeue_false},
+                                                           {count,    2},
+                                                           {encoding, base64}], ?OK),
+    %% All payloads must be base64-encoded when base64 encoding is used.
+    ?assertEqual(<<"base64">>, maps:get(payload_encoding, RecvUtf8Msg2)),
+    ?assertEqual(Utf8Payload, maps:get(payload, RecvUtf8Msg2)),
+    ?assertEqual(<<"base64">>, maps:get(payload_encoding, RecvBinMsg2)),
+    ?assertEqual(BinPayload, maps:get(payload, RecvBinMsg2)),
+    http_delete(Config, "/queues/%2f/get_encoding_test", {group, '2xx'}),
     passed.
 
 get_fail_test(Config) ->
@@ -2736,7 +2770,7 @@ rates_test(Config) ->
                   QueueTotals = maps:get(queue_totals, Overview, #{}),
                   HasPub andalso maps:get(messages_ready, QueueTotals, 0) > 0
           end,
-    wait_until(Fun, 60),
+    wait_until(Fun, 250),
     Overview = http_get(Config, "/overview"),
     MsgStats = maps:get(message_stats, Overview),
     QueueTotals = maps:get(queue_totals, Overview),
@@ -2819,9 +2853,9 @@ wait_until(_Fun, 0) ->
 wait_until(Fun, N) ->
     case Fun() of
     true ->
-        timer:sleep(1000);
+        timer:sleep(1500);
     false ->
-        timer:sleep(?COLLECT_INTERVAL),
+        timer:sleep(?COLLECT_INTERVAL + 100),
         wait_until(Fun, N - 1)
     end.
 
