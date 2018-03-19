@@ -722,7 +722,7 @@ dump_table(Config, Table) ->
 
 force_stats() ->
     force_all(),
-    timer:sleep(1000).
+    timer:sleep(5000).
 
 force_all() ->
     [begin
