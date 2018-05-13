@@ -119,7 +119,7 @@
 <% } %>
 <% if (show_column('queues', 'policy')) { %>
    <td class="c"><%= link_policy(queue.vhost, queue.policy) %>
-                 <%= fmt_string(queue.operator_policy) %></td>
+                 <%= fmt_op_policy_short(queue) %></td>
 <% } %>
 <% if (show_column('queues', 'consumers')) { %>
    <td class="c"><%= fmt_string(queue.consumers) %></td>
@@ -253,10 +253,10 @@
                   <span class="argument-link" field="arguments" key="x-expires" type="number">Auto expire</span> <span class="help" id="queue-expires"></span> |
                   <span class="argument-link" field="arguments" key="x-max-length" type="number">Max length</span> <span class="help" id="queue-max-length"></span> |
                   <span class="argument-link" field="arguments" key="x-max-length-bytes" type="number">Max length bytes</span> <span class="help" id="queue-max-length-bytes"></span> |
+                  <span class="argument-link" field="arguments" key="x-max-priority" type="number">Maximum priority</span> <span class="help" id="queue-max-priority"></span><br/> |
                   <span class="argument-link" field="arguments" key="x-overflow" type="string">Overflow behaviour</span> <span class="help" id="queue-overflow"></span><br/>
                   <span class="argument-link" field="arguments" key="x-dead-letter-exchange" type="string">Dead letter exchange</span> <span class="help" id="queue-dead-letter-exchange"></span> |
                   <span class="argument-link" field="arguments" key="x-dead-letter-routing-key" type="string">Dead letter routing key</span> <span class="help" id="queue-dead-letter-routing-key"></span> |
-                  <span class="argument-link" field="arguments" key="x-max-priority" type="number">Maximum priority</span> <span class="help" id="queue-max-priority"></span><br/>
                   <span class="argument-link" field="arguments" key="x-queue-mode" type="string" value="lazy">Lazy mode</span> <span class="help" id="queue-lazy"></span>
                   <span class="argument-link" field="arguments" key="x-queue-master-locator" type="string" value="">Master locator</span> <span class="help" id="queue-master-locator"></span>
                 </td>
