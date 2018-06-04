@@ -41,6 +41,7 @@ if sys.version_info[0] == 2:
     import httplib
     import urlparse
     from urllib import quote_plus
+    from urllib import quote
     def b64(s):
         return base64.b64encode(s)
 else:
@@ -48,6 +49,7 @@ else:
     import http.client as httplib
     import urllib.parse as urlparse
     from urllib.parse import quote_plus
+    from urllib.parse import quote
     def b64(s):
         return base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
@@ -730,7 +732,7 @@ class Management:
         for k in upload:
             v = upload[k]
             if v and isinstance(v, (str, bytes)):
-                uri_args[k] = quote_plus(v)
+                uri_args[k] = quote(v, '')
                 if k == 'destination_type':
                     uri_args['destination_char'] = v[0]
         uri = uri_template.format(**uri_args)
@@ -809,7 +811,10 @@ class Lister:
 
         def add_to_row(col, val):
             if col in column_ix:
-                row[column_ix[col]] = maybe_utf8(val)
+                if val is not None:
+                    row[column_ix[col]] = maybe_utf8(val)
+                else:
+                    row[column_ix[col]] = None
 
         if len(self.columns) == 0:
             for item in items:
