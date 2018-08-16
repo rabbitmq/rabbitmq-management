@@ -42,7 +42,31 @@
               </tr>
               <tr>
                 <th><label>Arguments:</label></th>
-                <td><div class="multifield" id="arguments"></div></td>
+                <td>
+                  <div class="multifield" id="arguments"></div>
+<% if (parent.type == 'headers') { %>
+            <table class="argument-links">
+              <tr>
+                <td>Add</td>
+                <td>
+                  Binding type <span class="help" id="x-match"/> <span class="argument-link" field="arguments" key="x-match" type="string" value="all">all</span>/<span class="argument-link" field="arguments" key="x-match" type="string" value="any">any</span>
+                  <br/>
+                  Match operators : on key value(s) <span class="help" id="x-match-operators-values"/> <span class="argument-link" field="arguments" key="x-?&lt;= key" type="string" value="value">&#8804;</span>/<span class="argument-link" field="arguments" key="x-?&lt; key" type="string" value="value">&lt;</span>/<span class="argument-link" field="arguments" key="x-?= key" type="string" value="value">=</span>/<span class="argument-link" field="arguments" key="x-?!= key" type="string" value="value">&#8800;</span>/<span class="argument-link" field="arguments" key="x-?&gt; key" type="string" value="value">&gt;</span>/<span class="argument-link" field="arguments" key="x-?&gt;= key" type="string" value="value">&#8805;</span>
+                  | on key(s) <span class="help" id="x-match-operators-keys"/> <span class="argument-link" field="arguments" key="x-?ex" type="string" value="key1">&#8707;</span> / <span class="argument-link" field="arguments" key="x-?nx" type="string" value="key1">&#8708;</span>
+                  <br/>
+                  <table>
+                    <tr>
+                      <td style="padding: 3px 2px 0px 0px;">Routing facilities <span class="help" id="x-match-routes"/> :</td>
+                      <td style="padding: 0px 0px 0px 2px;">
+add to queue(s) <span class="argument-link" field="arguments" key="x-match-addq-ontrue" type="string" value="queue1">on true</span>/<span class="argument-link" field="arguments" key="x-match-addq-onfalse" type="string" value="queue1">on false</span> | add to exchange(s) <span class="argument-link" field="arguments" key="x-match-adde-ontrue" type="string" value="exchange1">on true</span>/<span class="argument-link" field="arguments" key="x-match-adde-onfalse" type="string" value="exchange1">on false</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+<% } %>
+                </td>
               </tr>
             </table>
       <input type="submit" value="Bind"/>

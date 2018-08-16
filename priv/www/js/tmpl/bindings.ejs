@@ -1,5 +1,24 @@
 <%= maybe_truncate(bindings) %>
-<% if (bindings.length > 0) { %>
+<% if (bindings.length > 0)
+{
+  if (typeof exchange_type != 'undefined' && exchange_type == 'headers')
+  {
+    function get_binding_order(ob)
+    {
+      // Default order is 200
+      if (ob.arguments.hasOwnProperty('x-match-order') == false)
+        return 200;
+      return ob.arguments["x-match-order"];
+    }
+    bindings.sort(function(a,b) {
+      if (get_binding_order(a) < get_binding_order(b))
+        return -1;
+      if (get_binding_order(a) > get_binding_order(b))
+        return 1;
+      return 0;
+    });
+  }
+%>
     <table class="list updatable">
       <thead>
         <tr>

@@ -68,7 +68,7 @@
 <% } %>
   <p><span class="exchange">This exchange</span></p>
   <p class="arrow">&dArr;</p>
-  <%= format('bindings', {'mode': 'exchange_source', 'bindings': bindings_source}) %>
+  <%= format('bindings', {'mode': 'exchange_source', 'bindings': bindings_source, 'exchange_type': exchange.type}) %>
 </div>
   <%= format('add-binding', {'mode': 'exchange_source', 'parent': exchange}) %>
 <% } %>
