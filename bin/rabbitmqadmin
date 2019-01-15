@@ -53,6 +53,12 @@ else:
     def b64(s):
         return base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
+# ConnectionRefusedError is not implemented in Python 2
+try:
+    ConnectionRefusedError
+except NameError:
+    ConnectionRefusedError = NotImplemented
+
 VERSION = '%%VSN%%'
 
 LISTABLE = {'connections': {'vhost': False, 'cols': ['name','user','channels']},
