@@ -61,5 +61,8 @@ all_nodes_raw() ->
     Nodes = proplists:get_value(nodes, S),
     Types = proplists:get_keys(Nodes),
     Running = proplists:get_value(running_nodes, S),
-    [[{name, Node}, {type, Type}, {running, lists:member(Node, Running)}] ||
+    MnevisLeader = proplists:get_value(mnevis_leader, S),
+    [[{name, Node}, {type, Type},
+      {is_mnevis_leader, Node =:= MnevisLeader},
+      {running, lists:member(Node, Running)}] ||
         Type <- Types, Node <- proplists:get_value(Type, Nodes)].

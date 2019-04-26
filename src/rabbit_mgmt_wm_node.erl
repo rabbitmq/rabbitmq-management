@@ -71,8 +71,10 @@ node_data(Node, ReqData) ->
     S = rabbit_mnesia:status(),
     Nodes = proplists:get_value(nodes, S),
     Running = proplists:get_value(running_nodes, S),
+    IsRunning = lists:member(Node, Running),
+    IsMnevisLeader = Node =:= proplists:get_value(mnevis_leader, S),
     Type = find_type(Node, Nodes),
-    Basic = [[{name, Node}, {running, lists:member(Node, Running)}, {type, Type}]],
+    Basic = [[{name, Node}, {is_mnevis_leader, IsMnevisLeader}, {running, IsRunning}, {type, Type}]],
     case rabbit_mgmt_util:disable_stats(ReqData) of
         false ->
             rabbit_mgmt_db:augment_nodes(Basic, rabbit_mgmt_util:range_ceil(ReqData));
