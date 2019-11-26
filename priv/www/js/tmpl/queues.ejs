@@ -255,6 +255,11 @@
               <% } else { %>
                <option value="quorum">Quorum</option>
               <% } %>
+              <% if (queue_type == "stream") { %>
+               <option value="stream" selected>Stream</option>
+              <% } else { %>
+               <option value="stream">Stream</option>
+              <% } %>
             </select>
           </td>
         </tr>
