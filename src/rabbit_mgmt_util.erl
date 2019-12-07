@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ Management Plugin.
 %%
 %% The Initial Developer of the Original Code is GoPivotal, Inc.
-%% Copyright (c) 2007-2018 Pivotal Software, Inc.  All rights reserved.
+%% Copyright (c) 2007-2019 Pivotal Software, Inc.  All rights reserved.
 %%
 
 -module(rabbit_mgmt_util).
@@ -54,7 +54,7 @@
 -export([get_path_prefix/0]).
 -export([catch_no_such_user_or_vhost/2]).
 
--export([disable_stats/1]).
+-export([disable_stats/1, enable_queue_totals/1]).
 
 -import(rabbit_misc, [pget/2]).
 
@@ -132,6 +132,13 @@ disable_stats(ReqData) ->
                end,
     MgmtOnly orelse get_bool_env(rabbitmq_management, disable_management_stats, false)
         orelse get_bool_env(rabbitmq_management_agent, disable_metrics_collector, false).
+
+enable_queue_totals(ReqData) ->
+    EnableTotals = case qs_val(<<"enable_queue_totals">>, ReqData) of
+                       <<"true">> -> true;
+                       _ -> false
+                   end,
+    EnableTotals orelse get_bool_env(rabbitmq_management, enable_queue_totals, false).
 
 get_bool_env(Application, Par, Default) ->
     case application:get_env(Application, Par, Default) of
@@ -791,20 +798,19 @@ with_decode(Keys, Body, ReqData, Context, Fun) ->
 decode(Keys, Body) ->
     case decode(Body) of
         {ok, J0} ->
-                    J = maps:fold(fun(K, V, Acc) ->
-                        Acc#{binary_to_atom(K, utf8) => V}
-                    end, J0, J0),
-                    Results = [get_or_missing(K, J) || K <- Keys],
-                    case [E || E = {key_missing, _} <- Results] of
-                        []      -> {ok, Results, J};
-                        Errors  -> {error, Errors}
-                    end;
-        Else     -> Else
+            J = maps:fold(fun(K, V, Acc) ->
+                    Acc#{binary_to_atom(K, utf8) => V}
+                end, J0, J0),
+                Results = [get_or_missing(K, J) || K <- Keys],
+                case [E || E = {key_missing, _} <- Results] of
+                    []      -> {ok, Results, J};
+                    Errors  -> {error, Errors}
+                end;
+        Else -> Else
     end.
 
 decode(<<"">>) ->
     {ok, #{}};
-
 decode(Body) ->
     try
         {ok, rabbit_json:decode(Body)}
@@ -831,7 +837,7 @@ direct_request(MethodName, Transformers, Extra, ErrorMsg, ReqData,
               Method = props_to_method(MethodName, Props, Transformers, Extra),
               Node = get_node(Props),
               case rabbit_misc:rpc_call(Node, rabbit_channel, handle_method,
-                                        [Method, none, ?MODULE, none,
+                                        [Method, none, #{}, none,
                                          VHost, User]) of
                   {badrpc, nodedown} ->
                       Msg = io_lib:format("Node ~p could not be contacted", [Node]),
@@ -909,20 +915,9 @@ props_to_method(MethodName, Props) ->
                     FieldNames),
     Res.
 
-parse_bool(<<"true">>)  -> true;
-parse_bool(<<"false">>) -> false;
-parse_bool(true)        -> true;
-parse_bool(false)       -> false;
-parse_bool(undefined)   -> undefined;
-parse_bool(V)           -> throw({error, {not_boolean, V}}).
+parse_bool(V) -> rabbit_misc:parse_bool(V).
 
-parse_int(I) when is_integer(I) -> I;
-parse_int(F) when is_number(F)  -> trunc(F);
-parse_int(S)                    -> try
-                                       list_to_integer(binary_to_list(S))
-                                   catch error:badarg ->
-                                           throw({error, {not_integer, S}})
-                                   end.
+parse_int(V) -> rabbit_misc:parse_int(V).
 
 with_channel(VHost, ReqData, Context, Fun) ->
     with_channel(VHost, ReqData, Context, node(), Fun).
@@ -1094,14 +1089,10 @@ list_login_vhosts(User, AuthzData) ->
               _  -> false
           end].
 
-%% Wow, base64:decode throws lots of weird errors. Catch and convert to one
+%% base64:decode throws lots of weird errors. Catch and convert to one
 %% that will cause a bad_request.
 b64decode_or_throw(B64) ->
-    try
-        base64:decode(B64)
-    catch error:_ ->
-            throw({error, {not_base64, B64}})
-    end.
+    rabbit_misc:b64decode_or_throw(B64).
 
 no_range() -> {no_range, no_range, no_range, no_range}.
 
