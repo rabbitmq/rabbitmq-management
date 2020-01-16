@@ -1425,7 +1425,9 @@ function collapse_multifields(params0) {
     if (params.hasOwnProperty('queuetype')) {
         delete params['queuetype'];
         params['arguments']['x-queue-type'] = queue_type;
-        if (queue_type == 'quorum' || queue_type == 'stream') {
+        if (queue_type == 'quorum' ||
+            queue_type == 'stream' ||
+            queue_type == 'stream2') {
             params['durable'] = true;
             params['auto_delete'] = false;
         }
@@ -1633,6 +1635,18 @@ function is_stream(queue) {
     if (queue["arguments"]) {
         if (queue["arguments"]["x-queue-type"]) {
             return queue["arguments"]["x-queue-type"] === "stream";
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+function is_stream2(queue) {
+    if (queue["arguments"]) {
+        if (queue["arguments"]["x-queue-type"]) {
+            return queue["arguments"]["x-queue-type"] === "stream2";
         } else {
             return false;
         }
