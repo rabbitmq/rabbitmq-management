@@ -5,13 +5,11 @@
   <meta content="utf-8" http-equiv="encoding">
   <link href="css/main.css" rel="stylesheet" type="text/css"/>
   <link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/>
-  <script src="js/oidc-client.js"></script>
+  <script src="js/oidc-client.min.js"></script>
   <script type="application/javascript">
     new Oidc.UserManager()
-      .signinRedirectCallback()
-      .then(function () {
-        window.location = "/";
-      }).catch(function (e) {
+      .signinSilentCallback()
+      .catch(function (e) {
         console.error(e);
       });
   </script>
