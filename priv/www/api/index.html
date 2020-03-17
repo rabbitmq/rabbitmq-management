@@ -48,26 +48,28 @@
     added. <code>sort</code> allows you to select a primary field to
     sort by, and <code>sort_reverse</code> will reverse the sort order
     if set to <code>true</code>. The <code>sort</code> parameter can
-    contain subfields separated by dots. This allows you to sort by a
-    nested component of the listed items; it does not allow you to
-    sort by more than one field. See the example below.</p>
+      contain subfields separated by dots. This allows you to sort by a
+      nested component of the listed items; it does not allow you to
+      sort by more than one field. See the example below.</p>
 
     <p>You can also restrict what information is returned per item
-    with the <code>columns</code> parameter. This is a comma-separated
-    list of subfields separated by dots. See the example below.</p>
+      with the <code>columns</code> parameter. This is a comma-separated
+      list of subfields separated by dots. See the example below.</p>
 
     <p>Most of the GET queries return many fields per
-    object. The second part of this guide covers those.</p>
+      object. The second part of this guide covers those.</p>
+
+    <p>To request the API, the minimum required tag for the user is management.</p>
 
     <h2>Examples</h2>
 
     <p>A few quick examples for Windows and Unix, using the command line
-    tool <code>curl</code>:</p>
+      tool <code>curl</code>:</p>
 
     <ul>
       <li>
         Get a list of vhosts:
-<pre>:: Windows
+        <pre>:: Windows
 C:\&gt; curl -i -u guest:guest http://localhost:15672/api/vhosts
 
 # Unix
@@ -175,7 +177,8 @@ vary: accept, accept-encoding, origin</pre>
         <th>DELETE</th>
         <th>POST</th>
         <th>Path</th>
-        <th>Required permissions (API / vhost)</th>
+        <th>Required management tag</th>
+        <th>Required vhost permissions</th>
         <th>Description</th>
       </tr>
       <tr>
@@ -185,6 +188,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/overview</td>
         <td>management</td>
+        <td></td>
         <td>Various random bits of information that describe the whole
         system.</td>
       </tr>
@@ -195,6 +199,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/cluster-name</td>
         <td>management & [PUT] administrator</td>
+        <td></td>
         <td>Name identifying this RabbitMQ cluster.</td>
       </tr>
       <tr>
@@ -204,6 +209,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/nodes</td>
         <td>monitoring</td>
+        <td></td>
         <td>A list of nodes in the RabbitMQ cluster.</td>
       </tr>
       <tr>
@@ -213,6 +219,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/nodes/<i>name</i></td>
         <td>monitoring</td>
+        <td></td>
         <td>
           An individual node in the RabbitMQ cluster. Add
           "?memory=true" to get memory statistics, and "?binary=true"
@@ -227,6 +234,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/extensions</td>
         <td>monitoring</td>
+        <td></td>
         <td>A list of extensions to the management plugin.</td>
       </tr>
       <tr>
@@ -238,6 +246,7 @@ vary: accept, accept-encoding, origin</pre>
                          /api/all-configuration <em>(deprecated)</em>
         </td>
         <td>administrator</td>
+        <td></td>
         <td>
           The server definitions - exchanges, queues, bindings, users,
           virtual hosts, permissions, topic permissions, and parameters. Everything apart from
@@ -279,6 +288,7 @@ vary: accept, accept-encoding, origin</pre>
         <td class="path">/api/definitions/<i>vhost</i><br/>
         </td>
         <td>administrator</td>
+        <td></td>
         <td>
           The server definitions for a given virtual host -
           exchanges, queues, bindings and policies.
@@ -318,6 +328,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/connections</td>
         <td>management</td>
+        <td></td>
         <td>A list of all open connections.</td>
       </tr>
       <tr>
@@ -326,7 +337,8 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/vhosts/<i>vhost</i>/connections</td>
-        <td>management + user added to vhost</td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>A list of all open connections in a specific vhost.</td>
       </tr>
       <tr>
@@ -335,6 +347,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/connections/<i>name</i></td>
+        <td>monitoring & [DELETE] administrator</td>
         <td></td>
         <td>
           An individual connection. DELETEing it will close the
@@ -348,6 +361,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/connections/<i>name</i>/channels</td>
+        <td>monitoring & [DELETE] administrator</td>
         <td></td>
         <td>
           List of all channels for a given connection.
@@ -359,6 +373,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/channels</td>
+        <td>management</td>
         <td></td>
         <td>A list of all open channels.</td>
       </tr>
@@ -368,7 +383,8 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/vhosts/<i>vhost</i>/channels</td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>A list of all open channels in a specific vhost.</td>
       </tr>
       <tr>
@@ -377,7 +393,8 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/channels/<i>channel</i></td>
-        <td></td>
+        <td>monitoring</td>
+        <td>User added to vhost</td>
         <td>Details about an individual channel.</td>
       </tr>
       <tr>
@@ -386,6 +403,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/consumers</td>
+        <td>management</td>
         <td></td>
         <td>A list of all consumers.</td>
       </tr>
@@ -396,6 +414,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/consumers/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all consumers in a given virtual host.</td>
       </tr>
       <tr>
@@ -404,6 +423,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/exchanges</td>
+        <td></td>
         <td></td>
         <td>A list of all exchanges.</td>
       </tr>
@@ -414,6 +434,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/exchanges/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all exchanges in a given virtual host.</td>
       </tr>
       <tr>
@@ -422,6 +443,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/exchanges/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>
           An individual exchange. To PUT an exchange, you will need a body looking something like this:
@@ -442,6 +464,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/exchanges/<i>vhost</i>/<i>name</i>/bindings/source</td>
         <td></td>
+        <td></td>
         <td>A list of all bindings in which a given exchange is the source.</td>
       </tr>
       <tr>
@@ -451,6 +474,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/exchanges/<i>vhost</i>/<i>name</i>/bindings/destination</td>
         <td></td>
+        <td></td>
         <td>A list of all bindings in which a given exchange is the destination.</td>
       </tr>
       <tr>
@@ -459,6 +483,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/exchanges/<i>vhost</i>/<i>name</i>/publish</td>
+        <td></td>
         <td></td>
         <td>
           Publish a message to a given exchange. You will need a body
@@ -490,6 +515,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/queues</td>
         <td></td>
+        <td></td>
         <td>A list of all queues.</td>
       </tr>
       <tr>
@@ -499,6 +525,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/queues/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all queues in a given virtual host.</td>
       </tr>
       <tr>
@@ -507,6 +534,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/queues/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>
           An individual queue. To PUT a queue, you will need a body looking something like this:
@@ -528,6 +556,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/queues/<i>vhost</i>/<i>name</i>/bindings</td>
         <td></td>
+        <td></td>
         <td>A list of all bindings on a given queue.</td>
       </tr>
       <tr>
@@ -536,6 +565,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/queues/<i>vhost</i>/<i>name</i>/contents</td>
+        <td></td>
         <td></td>
         <td>Contents of a queue. DELETE to purge. Note you can't GET this.</td>
       </tr>
@@ -546,6 +576,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/queues/<i>vhost</i>/<i>name</i>/actions</td>
+        <td></td>
         <td></td>
         <td>
           Actions that can be taken on a queue. POST a body like:
@@ -560,6 +591,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/queues/<i>vhost</i>/<i>name</i>/get</td>
+        <td></td>
         <td></td>
         <td>
           Get messages from a queue. (This is not an HTTP GET as it
@@ -595,6 +627,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/bindings</td>
         <td></td>
+        <td></td>
         <td>A list of all bindings.</td>
       </tr>
       <tr>
@@ -604,6 +637,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/bindings/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all bindings in a given virtual host.</td>
       </tr>
       <tr>
@@ -612,6 +646,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/bindings/<i>vhost</i>/e/<i>exchange</i>/q/<i>queue</i></td>
+        <td></td>
         <td></td>
         <td>
           <p>
@@ -637,6 +672,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/bindings/<i>vhost</i>/e/<i>exchange</i>/q/<i>queue</i>/<i>props</i></td>
         <td></td>
+        <td></td>
         <td>An individual binding between an exchange and a queue.
         The <i>props</i> part of the URI is a "name" for the binding
         composed of its routing key and a hash of its
@@ -649,6 +685,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/bindings/<i>vhost</i>/e/<i>source</i>/e/<i>destination</i></td>
+        <td></td>
         <td></td>
         <td>
           <p>
@@ -676,6 +713,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/bindings/<i>vhost</i>/e/<i>source</i>/e/<i>destination</i>/<i>props</i></td>
         <td></td>
+        <td></td>
         <td>
           An individual binding between two exchanges. Similar to
           the individual binding between an exchange and a queue,
@@ -689,6 +727,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/vhosts</td>
         <td></td>
+        <td></td>
         <td>A list of all vhosts.</td>
       </tr>
       <tr>
@@ -697,6 +736,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/vhosts/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>An individual virtual host. As a virtual host usually only
         has a name, you do not need an HTTP body when PUTing one of
@@ -714,6 +754,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/vhosts/<i>name</i>/permissions</td>
         <td></td>
+        <td></td>
         <td>A list of all permissions for a given virtual host.</td>
       </tr>
       <tr>
@@ -722,6 +763,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/vhosts/<i>name</i>/topic-permissions</td>
+        <td></td>
         <td></td>
         <td>A list of all topic permissions for a given virtual host.</td>
       </tr>
@@ -732,6 +774,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td class="path">/api/vhosts/<i>name</i>/start/<i>node</i></td>
         <td></td>
+        <td></td>
         <td>Starts virtual host <i>name</i> on node <i>node</i>.</td>
       </tr>
       <tr>
@@ -740,6 +783,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td></td>
         <td class="path">/api/users/</td>
+        <td></td>
         <td></td>
         <td>A list of all users.</td>
       </tr>
@@ -750,6 +794,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td class="path">/api/users/without-permissions</td>
         <td></td>
+        <td></td>
         <td>A list of users that do not have access to any virtual host.</td>
       </tr>
       <tr>
@@ -758,6 +803,7 @@ vary: accept, accept-encoding, origin</pre>
         <td></td>
         <td>X</td>
         <td class="path">/api/users/bulk-delete</td>
+        <td></td>
         <td></td>
         <td>Bulk deletes a list of users. Request body must contain the list:
         <pre>{"users" : ["user1", "user2", "user3"]}</pre></td>
@@ -768,6 +814,7 @@ vary: accept, accept-encoding, origin</pre>
         <td>X</td>
         <td></td>
         <td class="path">/api/users/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>An individual user. To PUT a user, you will need a body looking something like this:
 <pre>{"password":"secret","tags":"administrator"}</pre>
@@ -795,6 +842,7 @@ or:
         <td></td>
         <td class="path">/api/users/<i>user</i>/permissions</td>
         <td></td>
+        <td></td>
         <td>A list of all permissions for a given user.</td>
       </tr>
       <tr>
@@ -803,6 +851,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/users/<i>user</i>/topic-permissions</td>
+        <td></td>
         <td></td>
         <td>A list of all topic permissions for a given user.</td>
       </tr>
@@ -813,6 +862,7 @@ or:
         <td></td>
         <td class="path">/api/whoami</td>
         <td></td>
+        <td></td>
         <td>Details of the currently authenticated user.</td>
       </tr>
       <tr>
@@ -822,6 +872,7 @@ or:
         <td></td>
         <td class="path">/api/permissions</td>
         <td></td>
+        <td></td>
         <td>A list of all permissions for all users.</td>
       </tr>
       <tr>
@@ -830,6 +881,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/permissions/<i>vhost</i>/<i>user</i></td>
+        <td></td>
         <td></td>
         <td>An individual permission of a user and virtual host. To PUT a permission, you will need a body looking something like this:
 <pre>{"configure":".*","write":".*","read":".*"}</pre>
@@ -842,6 +894,7 @@ or:
         <td></td>
         <td class="path">/api/topic-permissions</td>
         <td></td>
+        <td></td>
         <td>A list of all topic permissions for all users.</td>
       </tr>
       <tr>
@@ -850,6 +903,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/topic-permissions/<i>vhost</i>/<i>user</i></td>
+        <td></td>
         <td></td>
         <td>Topic permissions for a user and virtual host. To PUT a topic permission, you will need a body looking something like this:
           <pre>{"exchange":"amq.topic","write":"^a","read":".*"}</pre>
@@ -862,6 +916,7 @@ or:
         <td></td>
         <td class="path">/api/parameters</td>
         <td></td>
+        <td></td>
         <td>A list of all vhost-scoped parameters.</td>
       </tr>
       <tr>
@@ -870,6 +925,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/parameters/<i>component</i></td>
+        <td></td>
         <td></td>
         <td>A list of all vhost-scoped parameters for a given component.</td>
       </tr>
@@ -880,6 +936,7 @@ or:
         <td></td>
         <td class="path">/api/parameters/<i>component</i>/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all vhost-scoped parameters for a given component and virtual host.</td>
       </tr>
       <tr>
@@ -888,6 +945,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/parameters/<i>component</i>/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>An individual vhost-scoped parameter. To PUT a parameter, you will need a body looking something like this:
 <pre>{"vhost": "/","component":"federation","name":"local_username","value":"guest"}</pre>
@@ -900,6 +958,7 @@ or:
         <td></td>
         <td class="path">/api/global-parameters</td>
         <td></td>
+        <td></td>
         <td>A list of all global parameters.</td>
       </tr>
       <tr>
@@ -908,6 +967,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/global-parameters/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>An individual global parameter. To PUT a parameter, you will need a body looking something like this:
 <pre>{"name":"user_vhost_mapping","value":{"guest":"/","rabbit":"warren"}}</pre>
@@ -919,6 +979,7 @@ or:
         <td></td>
         <td class="path">/api/policies</td>
         <td></td>
+        <td></td>
         <td>A list of all policies.</td>
       </tr>
       <tr>
@@ -928,6 +989,7 @@ or:
         <td></td>
         <td class="path">/api/policies/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all policies in a given virtual host.</td>
       </tr>
       <tr>
@@ -936,6 +998,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/policies/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>
           An individual policy. To PUT a policy, you will need a body looking something like this:
@@ -950,6 +1013,7 @@ or:
         <td></td>
         <td class="path">/api/operator-policies</td>
         <td></td>
+        <td></td>
         <td>A list of all operator policy overrides.</td>
       </tr>
       <tr>
@@ -959,6 +1023,7 @@ or:
         <td></td>
         <td class="path">/api/operator-policies/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>A list of all operator policy overrides in a given virtual host.</td>
       </tr>
       <tr>
@@ -967,6 +1032,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/operator-policies/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>
           An individual operator policy. To PUT a policy, you will need a body looking something like this:
@@ -980,6 +1046,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/aliveness-test/<i>vhost</i></td>
+        <td></td>
         <td></td>
         <td>
           Declares a test queue, then publishes and consumes a
@@ -997,6 +1064,7 @@ or:
         <td></td>
         <td class="path">/api/healthchecks/node</td>
         <td></td>
+        <td></td>
         <td>
           Runs basic healthchecks in the current node. Checks that the rabbit
           application is running, channels and queues can be listed successfully, and
@@ -1012,6 +1080,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/healthchecks/node/<i>node</i></td>
+        <td></td>
         <td></td>
         <td>
           Runs basic healthchecks in the given node. Checks that the rabbit
@@ -1029,6 +1098,7 @@ or:
         <td></td>
         <td class="path">/api/vhost-limits</td>
         <td></td>
+        <td></td>
         <td>
             Lists per-vhost limits for all vhosts.
         </td>
@@ -1040,6 +1110,7 @@ or:
         <td></td>
         <td class="path">/api/vhost-limits/<i>vhost</i></td>
         <td></td>
+        <td></td>
         <td>
             Lists per-vhost limits for specific vhost.
         </td>
@@ -1050,6 +1121,7 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/vhost-limits/<i>vhost</i>/<i>name</i></td>
+        <td></td>
         <td></td>
         <td>
           Set or delete per-vhost limit for <code>vhost</code>. The <code>name</code> URL path element
@@ -1066,6 +1138,7 @@ or:
         <td></td>
         <td class="path">/api/auth</td>
         <td></td>
+        <td></td>
         <td>
           Details about the OAuth2 configuration. It will return HTTP
           status 200 with body: <pre>{"enable_uaa":"boolean", "uaa_client_id":"string", "uaa_location":"string"}</pre>
@@ -1077,6 +1150,7 @@ or:
         <td></td>
         <td>X</td>
         <td class="path">/api/rebalance/queues</td>
+        <td></td>
         <td></td>
         <td>
           Rebalances all queues in all vhosts. This operation  is asynchronous therefore please check
