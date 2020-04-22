@@ -1004,12 +1004,13 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/policies/<i>vhost</i>/<i>name</i></td>
-        <td></td>
-        <td></td>
+        <td>policymaker</td>
+        <td>User added to vhost</td>
         <td>
           An individual policy. To PUT a policy, you will need a body looking something like this:
-<pre>{"pattern":"^amq.", "definition": {"federation-upstream-set":"all"}, "priority":0, "apply-to": "all"}</pre>
-          <code>pattern</code> and <code>definition</code> are mandatory, <code>priority</code> and <code>apply-to</code> are optional.
+          <pre>{"pattern":"^amq.", "definition": {"federation-upstream-set":"all"}, "priority":0, "apply-to": "all"}</pre>
+          <code>pattern</code> and <code>definition</code> are mandatory, <code>priority</code> and
+          <code>apply-to</code> are optional.
         </td>
       </tr>
       <tr>
@@ -1018,8 +1019,8 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/operator-policies</td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>A list of all operator policy overrides.</td>
       </tr>
       <tr>
@@ -1028,8 +1029,8 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/operator-policies/<i>vhost</i></td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>A list of all operator policy overrides in a given virtual host.</td>
       </tr>
       <tr>
@@ -1038,12 +1039,13 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/operator-policies/<i>vhost</i>/<i>name</i></td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>
           An individual operator policy. To PUT a policy, you will need a body looking something like this:
-<pre>{"pattern":"^amq.", "definition": {"expires":100}, "priority":0, "apply-to": "queues"}</pre>
-          <code>pattern</code> and <code>definition</code> are mandatory, <code>priority</code> and <code>apply-to</code> are optional.
+          <pre>{"pattern":"^amq.", "definition": {"expires":100}, "priority":0, "apply-to": "queues"}</pre>
+          <code>pattern</code> and <code>definition</code> are mandatory, <code>priority</code> and
+          <code>apply-to</code> are optional.
         </td>
       </tr>
       <tr>
@@ -1052,13 +1054,15 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/aliveness-test/<i>vhost</i></td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>
           Declares a test queue, then publishes and consumes a
           message. Intended for use by monitoring tools. If everything
           is working correctly, will return HTTP status 200 with
-          body: <pre>{"status":"ok"}</pre> Note: the test queue will
+          body:
+          <pre>{"status":"ok"}</pre>
+          Note: the test queue will
           not be deleted (to prevent queue churn if this is
           repeatedly pinged).
         </td>
@@ -1069,7 +1073,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/healthchecks/node</td>
-        <td></td>
+        <td>management</td>
         <td></td>
         <td>
           Runs basic healthchecks in the current node. Checks that the rabbit
@@ -1086,7 +1090,7 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/healthchecks/node/<i>node</i></td>
-        <td></td>
+        <td>management</td>
         <td></td>
         <td>
           Runs basic healthchecks in the given node. Checks that the rabbit
@@ -1103,10 +1107,10 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/vhost-limits</td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>
-            Lists per-vhost limits for all vhosts.
+          Lists per-vhost limits for all vhosts.
         </td>
       </tr>
       <tr>
@@ -1115,10 +1119,10 @@ or:
         <td></td>
         <td></td>
         <td class="path">/api/vhost-limits/<i>vhost</i></td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>
-            Lists per-vhost limits for specific vhost.
+          Lists per-vhost limits for specific vhost.
         </td>
       </tr>
       <tr>
@@ -1127,12 +1131,14 @@ or:
         <td>X</td>
         <td></td>
         <td class="path">/api/vhost-limits/<i>vhost</i>/<i>name</i></td>
-        <td></td>
-        <td></td>
+        <td>management</td>
+        <td>User added to vhost</td>
         <td>
           Set or delete per-vhost limit for <code>vhost</code>. The <code>name</code> URL path element
           refers to the name of the limit (<code>max-connections</code>, <code>max-queues</code>).
-          Limits are set using a JSON document in the body: <pre>{"value": 100}</pre>. Example
+          Limits are set using a JSON document in the body:
+          <pre>{"value": 100}</pre>
+          . Example
           request:</br>
           <pre>curl -4u 'guest:guest' -H 'content-type:application/json' -X PUT localhost:15672/api/vhost-limits/my-vhost/max-connections -d '{"value": 50}'</pre>
         </td>
@@ -1156,7 +1162,7 @@ or:
         <td></td>
         <td>X</td>
         <td class="path">/api/rebalance/queues</td>
-        <td></td>
+        <td>administrator</td>
         <td></td>
         <td>
           Rebalances all queues in all vhosts. This operation  is asynchronous therefore please check
