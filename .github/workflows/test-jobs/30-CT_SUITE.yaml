@@ -29,10 +29,10 @@ ct-$(CT_SUITE):
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"

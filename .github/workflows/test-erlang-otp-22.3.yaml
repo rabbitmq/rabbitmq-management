@@ -153,10 +153,10 @@ ct-cache:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -227,10 +227,10 @@ ct-clustering:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -301,10 +301,10 @@ ct-clustering_prop:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -375,10 +375,10 @@ ct-config_schema:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -449,10 +449,10 @@ ct-listener_config:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -523,10 +523,10 @@ ct-rabbit_mgmt_http:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -597,10 +597,10 @@ ct-rabbit_mgmt_only_http:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -671,10 +671,10 @@ ct-rabbit_mgmt_rabbitmqadmin:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -745,10 +745,10 @@ ct-rabbit_mgmt_stats:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -819,10 +819,10 @@ ct-rabbit_mgmt_test_db:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -893,10 +893,10 @@ ct-rabbit_mgmt_test_unit:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
@@ -967,10 +967,10 @@ ct-stats:
           FULL= \
           FAIL_FAST=1 \
           SKIP_AS_ERROR=1 \
-          CT_OPTS="-ct_hooks honeycomb_cth"
+          CT_OPTS="-ct_hooks honeycomb_cth '[{directory,\"$PWD/honeycomb\"}]'"
     - name: HONEYCOMB
       run: |
-        for f in /tmp/honeycomb/*; do
+        for f in honeycomb/*; do
           curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
               -d @${f} \
               "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
