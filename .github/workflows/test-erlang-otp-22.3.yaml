@@ -147,6 +147,9 @@ ct-cache:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-cache \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -221,6 +224,9 @@ ct-clustering:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-clustering \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -295,6 +301,9 @@ ct-clustering_prop:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-clustering_prop \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -369,6 +378,9 @@ ct-config_schema:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-config_schema \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -443,6 +455,9 @@ ct-listener_config:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-listener_config \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -517,6 +532,9 @@ ct-rabbit_mgmt_http:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_http \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -591,6 +609,9 @@ ct-rabbit_mgmt_only_http:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_only_http \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -665,6 +686,9 @@ ct-rabbit_mgmt_rabbitmqadmin:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_rabbitmqadmin \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -739,6 +763,9 @@ ct-rabbit_mgmt_stats:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_stats \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -813,6 +840,9 @@ ct-rabbit_mgmt_test_db:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_test_db \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -887,6 +917,9 @@ ct-rabbit_mgmt_test_unit:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-rabbit_mgmt_test_unit \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \
@@ -961,6 +994,9 @@ ct-stats:
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=22.3
+        export ELIXIR_VERSION=1.8.0
         make ct-stats \
           base_rmq_ref=master \
           current_rmq_ref=$branch_or_tag_name \

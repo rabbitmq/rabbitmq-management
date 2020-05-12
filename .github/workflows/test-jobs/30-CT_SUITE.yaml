@@ -23,6 +23,9 @@ ct-$(CT_SUITE):
       run: |
         branch_or_tag_name=${GITHUB_REF#refs/*/}
         ! test -d ebin || touch ebin/*
+        export BASE_RMQ_REF=$(BASE_RMQ_REF)
+        export ERLANG_VERSION=$(ERLANG_VERSION)
+        export ELIXIR_VERSION=$(ELIXIR_VERSION)
         make ct-$(CT_SUITE) \
           base_rmq_ref=$(base_rmq_ref) \
           current_rmq_ref=$branch_or_tag_name \
