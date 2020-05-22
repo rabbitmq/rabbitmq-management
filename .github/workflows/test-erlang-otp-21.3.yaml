@@ -58,23 +58,32 @@ jobs:
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: PREPARE SECONDARY UMBRELLA COPIES
         if: success() && 'oldest' == 'oldest'
         run: |
+          # ----------------------------------------------------------
+          # CAUTION:
+          # The same script must be copied to `03-CT_SUITE.yaml`. It is used to
+          # recreate the umbrellas if the cache restore fails.
+          # ----------------------------------------------------------
           set -x
-          if ! test -f umbrellas/.ready; then
-            git config --global advice.detachedHead false
-            # We recreate the directory in case something incomplete was
-            # cached.
-            rm -rf umbrellas
-            mkdir -p umbrellas
-            git clone \
-              https://github.com/rabbitmq/rabbitmq-public-umbrella.git \
-              umbrellas/master
-            make -C umbrellas/master co # To get RabbitMQ components.
-            for version in v3.7.26 v3.8.3; do
-              umbrella="umbrellas/$version"
+          for version in v3.7.26 v3.8.3; do
+            umbrella="umbrellas/$version"
+            if ! test -d "$umbrella"  ||
+               ! make -C "$umbrella/deps/rabbitmq_management" test-dist; then
+              rm -rf "$umbrella"
+
+              # Fetch the master Umbrella; the final umbrellas are created from
+              # the master copy.
+              if ! test -d umbrellas/master; then
+                git config --global advice.detachedHead false
+                git clone \
+                  https://github.com/rabbitmq/rabbitmq-public-umbrella.git \
+                  umbrellas/master
+                make -C umbrellas/master co # To get RabbitMQ components.
+              fi
+
               # We copy the master Umbrella and checkout the appropriate tag.
               cp -a umbrellas/master "$umbrella"
               git -C "$umbrella" checkout "master"
@@ -87,10 +96,46 @@ jobs:
               make -C "$umbrella" up
               make -C "$umbrella/deps/rabbitmq_management" test-dist
               rm -fr "$umbrella"/deps/*/{.git,test} "$umbrella"/.git
-            done
-            rm -fr umbrellas/master
-            touch umbrellas/.ready
-          fi
+            fi
+          done
+          rm -fr umbrellas/master
+  # vim:sw=2:et:
+  dialyzer:
+    name: dialyzer
+    needs: [checks]
+    runs-on: ubuntu-18.04
+    steps:
+      - name: CHECKOUT REPOSITORY
+        if: success() && 'oldest' == 'latest'
+        uses: actions/checkout@v2
+      # https://github.com/marketplace/actions/setup-elixir
+      - name: CONFIGURE OTP & ELIXIR
+        if: success() && 'oldest' == 'latest'
+        uses: actions/setup-elixir@v1
+        with:
+          otp-version: 21.3
+          # https://github.com/elixir-lang/elixir/releases
+          elixir-version: 1.8.0
+      - name: CACHE DEPS
+        if: success() && 'oldest' == 'latest'
+        uses: actions/cache@v1
+        with:
+          path: deps
+          key: otp-21.3_git-${{ github.sha }}_deps
+      - name: CACHE DIALYZER PLT
+        if: success() && 'oldest' == 'latest'
+        uses: actions/cache@v1
+        with:
+          path: .rabbitmq_management.plt
+          key: plt-rabbitmq_management-erlang-21.3-g${{ github.sha }}
+      - name: RUN DIALYZER
+        if: success() && 'oldest' == 'latest'
+        run: |
+          branch_or_tag_name=${GITHUB_REF#refs/*/}
+          make dialyze \
+            base_rmq_ref=master \
+            current_rmq_ref=$branch_or_tag_name \
+            FULL=
   # vim:sw=2:et:
   eunit:
     needs: [checks]
@@ -162,14 +207,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -239,14 +284,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -316,14 +361,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -393,14 +438,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -470,14 +515,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -547,14 +592,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -624,14 +669,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -701,14 +746,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -778,14 +823,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -855,14 +900,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -932,14 +977,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -1009,14 +1054,14 @@ jobs:
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && 'oldest' == 'oldest'
         uses: actions/cache@v1
         with:
           path: umbrellas
-          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev1
+          key: secondary-umbrellas-v3.7.26-v3.8.3-erlang-21.3-rev3
       - name: RUN TESTS [mixed-versions]
         if: success() && 'oldest' == 'oldest'
         run: |
@@ -1049,6 +1094,7 @@ jobs:
   # vim:sw=2:et:
   capture-tested-deps-versions:
     needs:
+      - dialyzer
       - eunit
       - ct-cache
       - ct-clustering

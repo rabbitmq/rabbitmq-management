@@ -38,7 +38,7 @@
           for f in honeycomb/*; do
             curl -H 'X-Honeycomb-Team: ${{ secrets.HONEYCOMB_TEAM }}' \
                 -d @${f} \
-                "https://api.honeycomb.io/1/events/rabbitmq-management-ci"
+                "https://api.honeycomb.io/1/events/rabbitmq-ci"
           done
       - name: CACHE SECONDARY UMBRELLAS
         if: success() && '$(ERLANG_VERSION_IS)' == 'oldest'
